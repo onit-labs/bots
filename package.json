@@ -7,9 +7,13 @@
     "deploy": "partykit deploy"
   },
   "dependencies": {
-    "partysocket": "^1.0.1"
+    "@xmtp/xmtp-js": "^11.5.0",
+    "partysocket": "^1.0.1",
+    "viem": "^2.9.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.6.3",
+    "@safe-global/api-kit": "^2.2.0",
     "partykit": "^0.0.100",
     "typescript": "^5.4.2"
   }

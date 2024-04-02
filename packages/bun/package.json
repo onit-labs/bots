@@ -4,12 +4,14 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun run index.ts",
+		"binary:download": "./dev/download-cli",
 		"check": "bunx @biomejs/biome check --apply ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.6.3",
 		"@types/bun": "latest",
-		"type-fest": "^4.14.0"
+		"type-fest": "^4.14.0",
+		"bun-types": "latest"
 	},
 	"peerDependencies": {
 		"typescript": "^5.0.0"

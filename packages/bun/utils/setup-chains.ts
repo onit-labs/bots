@@ -42,11 +42,8 @@ async function getSingletons(
 		const singletons = (await fetch(
 			`${txServiceUrl}/api/v1/about/singletons/`,
 		).then((res) => res.json())) as SafeSingletonResponse[] | undefined;
-		return {
-			chainId,
-			singletons: singletons!,
-			txServiceUrl,
-		};
+		if (!singletons) return;
+		return { chainId, singletons, txServiceUrl };
 	} catch (e) {
 		console.error("error", e);
 	}

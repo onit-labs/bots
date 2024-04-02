@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eu
+
+COMMIT_HASH="$(cat ./cli-commit.txt)"
+URL=https://github.com/xmtp/libxmtp/releases/download/cli-$COMMIT_HASH/cli-macos-aarch64
+
+echo "Downloading $URL"
+
+curl -L -o ./cli-binary $URL
+chmod +x ./cli-binary

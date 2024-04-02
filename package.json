@@ -4,15 +4,22 @@
   "private": true,
   "scripts": {
     "dev": "partykit dev --live",
-    "deploy": "partykit deploy"
+    "deploy": "partykit deploy",
+    "gen:proto": "buf generate buf.build/xmtp/proto"
   },
   "dependencies": {
+    "@protobuf-ts/grpcweb-transport": "^2.9.4",
+    "@xmtp/grpc-api-client": "^0.2.4",
+    "@xmtp/proto": "^3.46.0",
     "@xmtp/xmtp-js": "^11.5.0",
+    "grpc-web": "^1.5.0",
+    "long": "^5.2.3",
     "partysocket": "^1.0.1",
     "viem": "^2.9.5"
   },
   "devDependencies": {
     "@biomejs/biome": "1.6.3",
+    "@protobuf-ts/plugin": "^2.9.4",
     "@safe-global/api-kit": "^2.2.0",
     "partykit": "^0.0.100",
     "typescript": "^5.4.2"

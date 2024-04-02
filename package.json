@@ -3,7 +3,10 @@
 	"module": "index.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "bun run index.ts",
+		"dev": "bun --watch src/index.ts",
+		"build": "bun build src/index.ts",
+		"start": "NODE_ENV=production bun src/index.ts",
+		"test": "bun test",
 		"binary:download": "./dev/download-cli",
 		"check": "bunx @biomejs/biome check --apply ."
 	},
@@ -20,6 +23,7 @@
 		"@safe-global/api-kit": "^2.2.0",
 		"@xmtp/grpc-api-client": "^0.2.4",
 		"@xmtp/xmtp-js": "^11.5.0",
+		"elysia": "^1.0.11",
 		"remeda": "^1.57.0",
 		"viem": "^2.9.5"
 	}

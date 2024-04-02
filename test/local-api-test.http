@@ -1,0 +1,23 @@
+POST http://localhost:8080/bot/create HTTP/1.1
+content-type: application/json
+
+{
+  "members": ["0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad"]
+}
+
+###
+POST http://localhost:8080/bot/create HTTP/1.1
+content-type: application/json
+
+{
+  "members": ["0xD452ba2fB26fB7b529178b3fa4B96b2719ca8D46"]
+}
+
+###
+GET http://localhost:8080/bot/safe/1 HTTP/1.1
+
+###
+GET http://localhost:8080/bot/safe/10 HTTP/1.1
+
+###
+GET http://localhost:8080/bot/check-pending-members HTTP/1.1

@@ -1,42 +1,108 @@
 import { Database } from "bun:sqlite";
 import { Elysia, t } from "elysia";
 import { createClient } from "./lib/xmtp/cli";
+import { chainsByChainId } from "./lib/setup-chains";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import type { ChainAwareAddress } from "./db/schema";
+import * as schema from "./db/schema";
+import type { Address } from "viem";
 
-const dbPath = "./bot.db";
+const libxmtpDbPath = "./bot.db";
+const bot = await createClient(libxmtpDbPath);
+// const libmxtpDb = new Database(libxmtpDbPath);
+const appDb = new Database("./app.db");
+const db = drizzle(appDb, { schema });
 
-const bot = await createClient(dbPath);
-
-console.log(`Created bot with address ${bot.accountAddress}`);
-
-const db = new Database(dbPath);
+migrate(db, { migrationsFolder: "./src/db/migrations" });
 
 export default new Elysia()
 	.get("/", () => "Onit XMTP bot 🤖")
 	.group("/bot", (app) => {
 		return app
-			.guard({ body: t.Object({ name: t.String(), members: t.Array(t.String()) }) })
-			.post("/create", async ({ body }) => {
-				const { name, members } = body;
+			.get("/check-pending-members", async () => {
+				const pendingMembers = await db.query.pendingGroupMembers.findMany({
+					where(fields, { eq }) {
+						return eq(fields.status, "pending");
+					},
+				});
 
-				console.log(`Creating group ${name} with members ${members}`);
+				return JSON.stringify(pendingMembers, null, 4);
+			})
+			.post(
+				"/create",
+				async ({ body }) => {
+					const { members } = body;
 
-				try {
-				const groupId = await bot.createGroup();
-				if (!groupId) {
-					return "Failed to create group";
-				}
-				console.log(`Group ID is ${groupId}`);
-		console.log('add member')
-		console.log('adding', 
-				await bot.addMembers(groupId, members));
-				} catch (e) {
-					console.error('error code ->',e.exitCode);
-					console.error('error ->', e.stderr.toString());
-				}
+					let groupId: string | undefined = undefined;
+					let pendingMembers: Address[] = [];
 
+					try {
+						groupId = await bot.createGroup();
+						if (groupId) await db.insert(schema.groups).values({ id: groupId });
+					} catch (e) {
+						console.log("failed to create group", groupId, members);
+						console.error("error code ->", (e as any).exitCode);
+						console.error("error ->", (e as any).stderr.toString());
+					} finally {
+						if (!groupId) {
+							console.log("Failed to create group");
+							return "Failed to create group";
+						}
+					}
 
-				return `Creating group ${name} with members ${members}`
-			});
+					try {
+						const addedMembers = await bot.addMembers(groupId, members);
+						console.log(
+							`Group ID is ${groupId} -> Added members ${addedMembers}`,
+						);
+					} catch (e) {
+						// - if a adding members fails we need to try each of them individually to see which of the members failed
+						for await (const member of members) {
+							console.log(`adding -> ${member}`);
+							await bot.addMembers(groupId, [member]).catch(() => {
+								console.log(`failed to add -> ${member}`);
+								pendingMembers.push(member as Address);
+							});
+						}
+					}
+
+					console.log("Pending members -> ", pendingMembers);
+
+					await db.insert(schema.pendingGroupMembers).values(
+						pendingMembers.map((memberAddress) => ({
+							status: "pending" as const,
+							groupId,
+							// TODO: once XMTP supports contract wallets update this
+							chainAwareAddress:
+								`eth:${memberAddress}` satisfies ChainAwareAddress,
+						})),
+					);
+
+					return `Creating group ${groupId} with members ${members}`;
+				},
+				{
+					body: t.Object({
+						members: t.Array(
+							t.RegExp(/0x[a-f0-9]{40}/gi)
+							// t.String({ pattern: "/0x[a-f0-9]{40}/gi", format: 'regex' })
+							),
+					}),
+				},
+			)
+			.get(
+				"safe/:chainId",
+				async ({ params: { chainId } }) => {
+					if (Number.isNaN(chainId) || !(chainId in chainsByChainId)) {
+						return "Invalid chainId";
+					}
+					const chain =
+						chainsByChainId[Number(chainId) as keyof typeof chainsByChainId];
+
+					return `Getting safe singletons for ${chain.name}`;
+				},
+				{ params: t.Object({ chainId: t.Numeric() }) },
+			);
 	})
 	.listen(8080, ({ hostname, port }) => {
 		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);

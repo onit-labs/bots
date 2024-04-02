@@ -1,13 +1,12 @@
-import { describe, expect, it } from 'bun:test'
-import app from '../src'
+import { describe, expect, it } from "bun:test";
+import app from "../src";
 
-describe('Elysia', () => {
-    it('return a response', async () => {
+describe("Elysia", () => {
+	it("return a response", async () => {
+		const response = await app
+			.handle(new Request("http://localhost/"))
+			.then((res) => res.text());
 
-        const response = await app
-            .handle(new Request('http://localhost/'))
-            .then((res) => res.text())
-
-        expect(response).toBe('Onit XMTP bot 🤖')
-    })
-})
+		expect(response).toBe("Onit XMTP bot 🤖");
+	});
+});

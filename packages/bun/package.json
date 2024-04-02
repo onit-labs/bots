@@ -1,0 +1,24 @@
+{
+	"name": "onit-xmtp-bot",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "bun run index.ts",
+		"check": "bunx @biomejs/biome check --apply ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.6.3",
+		"@types/bun": "latest",
+		"type-fest": "^4.14.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@safe-global/api-kit": "^2.2.0",
+		"@xmtp/grpc-api-client": "^0.2.4",
+		"@xmtp/xmtp-js": "^11.5.0",
+		"remeda": "^1.57.0",
+		"viem": "^2.9.5"
+	}
+}

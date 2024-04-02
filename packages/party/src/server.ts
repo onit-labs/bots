@@ -34,7 +34,6 @@ export default class OnitServer implements Party.Server {
       transport: http()
     })
 
-    console.log('setting up xmtp client')
     void this.setupXmtpClient()
 
     // - set an alarm to query the chains for the latest safe
@@ -102,22 +101,28 @@ export default class OnitServer implements Party.Server {
 
     // tODO: store keys
     // Get the keys using a valid Signer. Save them somewhere secure.
-    const keys = await Client.getKeys(this.wallet, {
-      env: 'dev',
-      apiUrl: 'https://grpc.dev.xmtp.network:443',
-      // apiClientFactory: GrpcApiClient.fromOptions,
-      keystoreProviders: [new KeyGeneratorKeystoreProvider()]
-    }).catch(e => console.error('error getting keys', e))
-    
-    console.log('keys', keys)
-
-    // // Create a client using keys returned from getKeys
-    // this.xmtp = await Client.create(null, { privateKeyOverride: keys,
+    // const keys = await Client.getKeys(this.wallet, {
     //   env: 'dev',
     //   apiUrl: 'https://grpc.dev.xmtp.network:443',
-    //   apiClientFactory: GrpcApiClient.fromOptions,
-    //   keystoreProviders: [new StaticKeystoreProvider()]
-    //  }).catch(e => console.error('error creating client', e))
+      
+    //   // apiClientFactory: GrpcApiClient.fromOptions,
+    //   // keystoreProviders: [new KeyGeneratorKeystoreProvider()]
+    // }).catch(e => console.error('error getting keys', e))
+    
+
+    const keys = new Uint8Array(JSON.parse(this.room.env.XMTP_KEY_BUNDLE! as string))
+    // Create a client using keys returned from getKeys
+    const xmtp = await Client.create(null, { 
+      env: 'dev',
+      privateKeyOverride: keys,
+      // apiUrl: 'https://grpc.dev.xmtp.network:443',
+      apiClientFactory: GrpcApiClient.fromOptions,
+      keystoreProviders: [new StaticKeystoreProvider()],
+     }).catch(e => console.error('error creating client', e))
+
+     console.log('keys', xmtp)
+     if (xmtp) this.xmtp = xmtp
+
   }
 }
 

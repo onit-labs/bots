@@ -1,13 +1,17 @@
 import { Client } from "@xmtp/xmtp-js";
-import { $ } from "bun";
+import { $, Glob } from "bun";
 import { getWalletClient } from "../viem/wallet";
+
+
+const glob = new Glob("cli-binary");
 
 // This binary was downloaded from https://github.com/xmtp/libxmtp/releases/tag/cli-a8d3dd9
 // You must download an appropriate binary for your system's architecture
-const BINARY_PATH = (await import.meta.resolve("../../cli-binary")).replace(
-	"file://",
-	"",
-);
+let BINARY_PATH: string | undefined = undefined
+for (const file of glob.scanSync({ absolute: true })) {
+	if (file) BINARY_PATH = file 
+}
+
 
 async function generateV2Client() {
 	const { mnemonic, walletClient } = getWalletClient();
@@ -42,10 +46,10 @@ export async function createClient(dbPath: string) {
 
 	return {
 		accountAddress,
-		async createGroup(permissions = "creator-is-admin") {
+		async createGroup(permissions = "group-creator-is-admin") {
 			return (
 				await extractDataFromOutput<{ group_id: string }>(
-					`${runCommandTemplate} create-group --permissions ${permissions}`,
+					`${runCommandTemplate} create-group ${permissions}`,
 				)
 			)?.group_id;
 		},

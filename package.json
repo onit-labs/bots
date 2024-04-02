@@ -8,7 +8,9 @@
 		"start": "NODE_ENV=production bun src/index.ts",
 		"test": "bun test",
 		"binary:download": "./dev/download-cli",
-		"check": "bunx @biomejs/biome check --apply ."
+		"check": "bunx @biomejs/biome check --apply .",
+		"lint": "bunx @biomejs/biome lint . --apply",
+		"format": "bunx @biomejs/biome format . --write"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.6.3",

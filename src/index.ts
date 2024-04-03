@@ -110,25 +110,12 @@ export default new Elysia()
 						deployments,
 					);
 
-					// if (!groupId) return "Failed to create group";
+					if (!groupId) return "Failed to create group";
 
 					return result;
 				},
 				{ body: createXmtpGroupValidator },
 			);
-		// .get(
-		// 	"safe/:chainId",
-		// 	async ({ params: { chainId } }) => {
-		// 		if (Number.isNaN(chainId) || !(chainId in chainsByChainId)) {
-		// 			return "Invalid chainId";
-		// 		}
-		// 		const chain =
-		// 			chainsByChainId[Number(chainId) as keyof typeof chainsByChainId];
-
-		// 		return `Getting safe singletons for ${chain.name}`;
-		// 	},
-		// 	{ params: t.Object({ chainId: t.Numeric() }) },
-		// );
 	})
 	.listen(8080, ({ hostname, port }) => {
 		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);

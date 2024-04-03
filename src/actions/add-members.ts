@@ -29,7 +29,7 @@ export async function addMembers(
 		);
 
 		for (const result of addPromises) {
-			if (result.status === "rejected") 
+			if (result.status === "rejected")
 				pendingMembers.push(result.reason as Address);
 		}
 	}

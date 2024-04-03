@@ -44,3 +44,7 @@ GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/members HTTP/1.
 ###
 GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.1
 
+
+###
+GET http://localhost:8080/0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad HTTP/1.1
+

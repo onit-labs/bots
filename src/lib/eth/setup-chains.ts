@@ -54,9 +54,12 @@ async function getSingletons(
 
 async function setupChains() {
 	const singletonPromises = await Promise.allSettled(
-		Object.entries(TRANSACTION_SERVICE_URLS).flatMap(([chainId, txServiceUrl]) =>
-		chainId === '5' ? [] : // skip Goerli testnet
-			[getSingletons(Number(chainId) as ChainId, txServiceUrl)],
+		Object.entries(TRANSACTION_SERVICE_URLS).flatMap(
+			([chainId, txServiceUrl]) =>
+				chainId === "5"
+					? []
+					: // skip Goerli testnet
+						[getSingletons(Number(chainId) as ChainId, txServiceUrl)],
 		),
 	);
 
@@ -68,7 +71,10 @@ async function setupChains() {
 			if (chainId in chainShortNames)
 				chain.safe = {
 					singletons,
-					api: new SafeApiKit({ chainId: BigInt(chainId), txServiceUrl: `${txServiceUrl}/api` }),
+					api: new SafeApiKit({
+						chainId: BigInt(chainId),
+						txServiceUrl: `${txServiceUrl}/api`,
+					}),
 					shortName: chainShortNames[chainId as keyof typeof chainShortNames],
 				};
 			// console.log(

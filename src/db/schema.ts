@@ -5,7 +5,9 @@ import type { Uuidv7 } from "../lib/validators";
 import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
 import type { Address } from "viem";
 
-export type ChainAwareAddress = `${ChainShortName}:${Address}` | `${string}:${Address}`;
+export type ChainAwareAddress =
+	| `${ChainShortName}:${Address}`
+	| `${string}:${Address}`;
 
 const idField = {
 	id: text("id")

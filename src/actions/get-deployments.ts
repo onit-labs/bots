@@ -28,11 +28,15 @@ export async function getDeployments({
 					}),
 					// - get the safe info for each chain
 					R.map(async (chain) => {
-						const [_, addressWithoutShortName] = address.split(":") as [string, Address];
-						console.log('creation info', await chain.safe?.api.getSafeCreationInfo(addressWithoutShortName).catch((e) =>console.log('failed to get safe creation info ->', e) ))
+						const [_, addressWithoutShortName] = address.split(":") as [
+							string,
+							Address,
+						];
 						return [
 							chain,
-							await chain.safe?.api.getSafeInfo(addressWithoutShortName).catch((e) =>console.log('failed to get safe info ->', e) ),
+							await chain.safe?.api
+								.getSafeInfo(addressWithoutShortName)
+								.catch((e) => console.log("failed to get safe info ->", e)),
 						] satisfies [ChainWithSafe, SafeInfoResponse | undefined | void];
 					}),
 				),

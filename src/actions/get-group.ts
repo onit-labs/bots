@@ -13,7 +13,10 @@ export const getGroup = async (groupId: string) => {
 			pendingMembers: {
 				columns: {},
 				extras: (fields, { sql }) => ({
-          address: sql<Address>`SUBSTR(${fields.chainAwareAddress}, INSTR(${fields.chainAwareAddress}, ':') + 1)`.as("address")
+					address:
+						sql<Address>`SUBSTR(${fields.chainAwareAddress}, INSTR(${fields.chainAwareAddress}, ':') + 1)`.as(
+							"address",
+						),
 				}),
 			},
 		},

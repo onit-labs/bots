@@ -8,10 +8,11 @@ import { AddressLiteral, AddressOrChainAwareAddress } from "../lib/validators";
 import { bot } from "../lib/xmtp/client";
 import { getDeployments } from "./get-deployments";
 import { getGroupByWalletAddress } from "./get-group-by-wallet-address";
+import { addMembers } from "./add-members";
 
 /**
  * TODO: ?
- * ? we could convert this into a web hook and give progressive feedback ... 
+ * ? we could convert this into a web hook and give progressive feedback ...
  * ? it can be quite slow adding members individually
  */
 
@@ -52,19 +53,18 @@ export async function createXmtpGroup(
 	const { groupAddress, groupType = "safe" } = group;
 	let { members = [] } = group;
 	let groupId: string | undefined = undefined;
-	let pendingMembers: Address[] = [];
 
+	// - first check if a group with this wallet already exists
+	const existingGroup = await getGroupByWalletAddress(groupAddress);
 
-  // - first check if a group with this wallet already exists
-  const existingGroup = await getGroupByWalletAddress(groupAddress)
-
-  console.log('existing group', existingGroup)
-
-  if (existingGroup?.id) {
-    // ? if someone is trying to recreate a group maybe we should retrigger the sync events for this group
-    console.log("Group already exists", existingGroup);
-    return { groupId: existingGroup.id, pendingMembers: existingGroup.pendingMembers };
-  }
+	if (existingGroup?.id) {
+		// ? if someone is trying to recreate a group maybe we should retrigger the sync events for this group
+		console.log("Group already exists", existingGroup);
+		return {
+			groupId: existingGroup.id,
+			pendingMembers: existingGroup.pendingMembers,
+		};
+	}
 
 	// - try to create the group with only the bot
 	try {
@@ -115,24 +115,7 @@ export async function createXmtpGroup(
 		// TODO: gather each of the deployed chains and insert the chainAwareAddress
 	}
 
-	// - Try to add all the members to the group if this fails
-	// - then we will try to add each member individually to determine
-	// - which of the members failed to be added & add them to the pending members list
-  // ! we have to do this because atm there is no good way to check if the user is on the network & 
-  // ! xmtp doesn't return a list of failed members on creation
-	try {
-		const addedMembers = await bot.addMembers(groupId, members as string[]);
-		console.log(`Group ID is ${groupId} -> Added members ${addedMembers}`);
-	} catch (e) {
-		// - if a adding members fails we need to try each of them individually to see which of the members failed
-		for await (const member of members) {
-			console.log(`adding -> ${member}`);
-			await bot.addMembers(groupId, [member]).catch(() => {
-				console.log(`failed to add -> ${member}`);
-				pendingMembers.push(member as Address);
-			});
-		}
-	}
+	const { pendingMembers } = await addMembers(groupId, members);
 
 	console.log("Pending members -> ", pendingMembers);
 

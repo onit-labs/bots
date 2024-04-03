@@ -1,16 +1,19 @@
+import SafeApiKit from "@safe-global/api-kit";
 import type { SafeSingletonResponse } from "@safe-global/api-kit";
 import { TRANSACTION_SERVICE_URLS } from "@safe-global/api-kit/dist/src/utils/config";
 import * as R from "remeda";
-import type { ValueOf } from "type-fest";
+import type { ValueOf, Simplify } from "type-fest";
 import type { Chain } from "viem/chains";
 import * as chains from "viem/chains";
+import { chainShortNames } from "./eip3770-shortnames";
 
 export type ChainId = ValueOf<typeof chains>["id"];
 
 export interface ChainWithSafe extends Chain {
 	safe?: {
 		singletons: SafeSingletonResponse[];
-		txServiceUrl: string;
+		api: SafeApiKit;
+		shortName: Simplify<ValueOf<typeof chainShortNames>>;
 	};
 }
 
@@ -60,8 +63,16 @@ async function setupChains() {
 		if (result.status === "fulfilled") {
 			if (!result.value) continue;
 			const chain = chainsByChainId[result.value.chainId];
-			chain.safe = result.value;
-			console.log(`Successfully setup ${chain.name} chain`);
+			const { singletons, txServiceUrl, chainId } = result.value;
+			if (chainId in chainShortNames)
+				chain.safe = {
+					singletons,
+					api: new SafeApiKit({ chainId: BigInt(chainId), txServiceUrl }),
+					shortName: chainShortNames[chainId as keyof typeof chainShortNames],
+				};
+			console.log(
+				`Successfully setup ${chain.name} chain -> shortName: ${chain.safe?.shortName}`,
+			);
 		} else {
 			console.error("Error setting up chain", result.reason);
 		}

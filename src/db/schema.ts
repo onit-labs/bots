@@ -1,14 +1,20 @@
 import { sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
 import { generateUuid7 } from "../lib/uuid";
 import type { Uuidv7 } from "../lib/validators";
+import type { ChainShortName } from "../lib/viem/eip3770-shortnames";
 
-export type ChainAwareAddress = `${string}:0x${string}`;
+export type ChainAwareAddress = `${ChainShortName}:0x${string}`;
 
 const idField = {
 	id: text("id")
 		.$type<Uuidv7>()
 		.$default(() => generateUuid7()),
 };
+
+/**
+ * - Views
+ */
 
 export const groups = sqliteTable("groups", {
 	id: text("id"),
@@ -33,5 +39,31 @@ export const pendingGroupMembers = sqliteTable(
 	},
 	(fields) => ({
 		uniqueMember: unique().on(fields.chainAwareAddress, fields.groupId),
+	}),
+);
+
+/**
+ * - Relations
+ */
+
+export const groupsRelations = relations(groups, ({ many }) => ({
+	wallets: many(groupWallets),
+	pendingMembers: many(pendingGroupMembers),
+}));
+
+export const groupWalletsRelations = relations(groupWallets, ({ one }) => ({
+	group: one(groups, {
+		fields: [groupWallets.groupId],
+		references: [groups.id],
+	}),
+}));
+
+export const pendingGroupMembersRelations = relations(
+	pendingGroupMembers,
+	({ one }) => ({
+		group: one(groups, {
+			fields: [pendingGroupMembers.groupId],
+			references: [groups.id],
+		}),
 	}),
 );

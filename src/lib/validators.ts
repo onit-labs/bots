@@ -11,3 +11,8 @@ export const AddressLiteral = t.TemplateLiteral("0x${string}");
 export const ChainAwareAddressLiteral = t.TemplateLiteral(
 	"${string}:0x${string}",
 );
+
+export const AddressOrChainAwareAddress = t.Union([
+	AddressLiteral,
+	ChainAwareAddressLiteral,
+]);

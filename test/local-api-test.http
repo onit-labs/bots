@@ -2,7 +2,6 @@ POST http://localhost:8080/bot/create HTTP/1.1
 content-type: application/json
 
 {
-  "groupType": "safe",
   "groupAddress": "sep:0x76e009080E15DfbBF9a8424dB2D5b6772b6B5341"
 }
 
@@ -40,4 +39,8 @@ GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1 HTTP/1.1
 
 ###
 GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/members HTTP/1.1
+
+
+###
+GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.1
 

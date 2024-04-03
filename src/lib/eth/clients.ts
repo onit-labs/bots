@@ -1,8 +1,13 @@
-import { http, createWalletClient } from "viem";
+import { http, createWalletClient, createPublicClient } from "viem";
 // import { privateKeyToAccount } from "viem/accounts";
 import { mnemonicToAccount } from "viem/accounts";
 // import { chainsByChainId } from './utils/setup-chains'
 import { mainnet } from "viem/chains";
+
+export const publicClient = createPublicClient({
+	chain: mainnet,
+	transport: http(),
+})
 
 export function getWalletClient() {
 	// const mnemonic = generateMnemonic(english)

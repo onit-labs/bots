@@ -2,9 +2,10 @@ import { sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { generateUuid7 } from "../lib/uuid";
 import type { Uuidv7 } from "../lib/validators";
-import type { ChainShortName } from "../lib/viem/eip3770-shortnames";
+import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
+import type { Address } from "viem";
 
-export type ChainAwareAddress = `${ChainShortName}:0x${string}`;
+export type ChainAwareAddress = `${ChainShortName}:${Address}` | `${string}:${Address}`;
 
 const idField = {
 	id: text("id")

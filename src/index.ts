@@ -1,10 +1,10 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import {
 	createXmtpGroup,
 	createXmtpGroupValidator,
 } from "./actions/create-xmtp-group";
-import { syncPendingMembers } from "./actions/sync-pending-members";
 import { getGroup } from "./actions/get-group";
+import { syncPendingMembers } from "./actions/sync-pending-members";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -25,7 +25,6 @@ import { getGroup } from "./actions/get-group";
  * TODO: Add a method to add members to the group chat
  * TODO: Add a method to retry adding members
  * TODO: Add a method to list all the existing safe group chats for address
- * TODO: Add a method to list all the pending members of group
  * TODO: Add a method to add a deployed counterfactual account to the group chat
  * ! only run the next two methods if the group chat is a **deployed** safe
  * TODO: Add a job to periodically check for new members in a safe and add them to the group chat
@@ -43,6 +42,10 @@ export default new Elysia()
 			.get("/members", async ({ params: { groupId } }) => {
 				if (!groupId) return "Invalid group id";
 				return (await getGroup(groupId))?.pendingMembers || [];
+			})
+			.get("/wallets", async ({ params: { groupId } }) => {
+				if (!groupId) return "Invalid group id";
+				return (await getGroup(groupId))?.wallets || [];
 			});
 	})
 	.group("/bot", (app) => {
@@ -54,20 +57,29 @@ export default new Elysia()
 			.post(
 				"/create",
 				async ({ body }) => {
-					const { groupAddress, groupType } = body;
+					const { groupAddress, groupType = "safe" } = body;
+
 					if (groupType !== "safe")
 						return "Sorry only safes are supported at the moment";
 
-					// const { groupId, members } =
-					return JSON.stringify(
-						await createXmtpGroup({ groupAddress, groupType }),
-						null,
-						4,
+					const result = await createXmtpGroup({
+						groupAddress,
+						groupType,
+					});
+
+					const { groupId, members, pendingMembers, deployments } = result;
+
+					console.log(
+						"Created group",
+						groupId,
+						members,
+						pendingMembers,
+						deployments,
 					);
 
 					// if (!groupId) return "Failed to create group";
 
-					// return `Creating group ${groupId} with members ${members}`;
+					return result;
 				},
 				{ body: createXmtpGroupValidator },
 			);

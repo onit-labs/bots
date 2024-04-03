@@ -1,6 +1,6 @@
 import * as R from "remeda";
 import type { Address } from "viem";
-import { chainsByChainId, type ChainWithSafe } from "../lib/viem/setup-chains";
+import { chainsByChainId, type ChainWithSafe } from "../lib/eth/setup-chains";
 import type { ChainAwareAddress } from "../db/schema";
 import type { SafeInfoResponse } from "@safe-global/api-kit";
 
@@ -14,9 +14,9 @@ export async function getDeployments({
 	let deployments: { address: ChainAwareAddress; members: Address[] }[] = [];
 
 	switch (type) {
-		// tODO: support party
 		case "safe": {
 			// - concurrently get the safe info for each supported chain
+			// - if the address is a chain aware address, only check the chain that matches the short name
 			const infoPromises = await Promise.allSettled(
 				R.pipe(
 					R.values(chainsByChainId),
@@ -28,10 +28,12 @@ export async function getDeployments({
 					}),
 					// - get the safe info for each chain
 					R.map(async (chain) => {
+						const [_, addressWithoutShortName] = address.split(":") as [string, Address];
+						console.log('creation info', await chain.safe?.api.getSafeCreationInfo(addressWithoutShortName).catch((e) =>console.log('failed to get safe creation info ->', e) ))
 						return [
 							chain,
-							await chain.safe?.api.getSafeInfo(address),
-						] satisfies [ChainWithSafe, SafeInfoResponse | undefined];
+							await chain.safe?.api.getSafeInfo(addressWithoutShortName).catch((e) =>console.log('failed to get safe info ->', e) ),
+						] satisfies [ChainWithSafe, SafeInfoResponse | undefined | void];
 					}),
 				),
 			);
@@ -49,6 +51,8 @@ export async function getDeployments({
 			}
 			break;
 		}
+		case "party":
+		// tODO: support party
 		default:
 			break;
 	}

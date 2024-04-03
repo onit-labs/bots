@@ -1,6 +1,6 @@
 import { Client } from "@xmtp/xmtp-js";
 import { $, Glob } from "bun";
-import { getWalletClient } from "../viem/wallet";
+import { getWalletClient } from "../eth/clients";
 
 const glob = new Glob("cli-binary");
 

@@ -1,6 +1,7 @@
 import type { Address } from "viem";
 import { db } from "../db";
 import type { ChainAwareAddress } from "../db/schema";
+import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
 
 const groupWalletColumns = {
 	columns: {
@@ -13,11 +14,10 @@ const groupWalletColumns = {
 			with: {
 				pendingMembers: {
 					columns: {},
-					extras: (fields, { sql }) => ({
-						address:
-							sql<Address>`SUBSTR(${fields.chainAwareAddress}, INSTR(${fields.chainAwareAddress}, ':') + 1)`.as(
-								"address",
-							),
+					extras: (fields) => ({
+						address: sqliteAddressFromChainAwareAddress(
+							fields.chainAwareAddress,
+						).as("address"),
 					}),
 				},
 			},
@@ -49,7 +49,9 @@ export async function getGroupByWalletAddress(
 		...groupWalletColumns,
 		// - compare the wallet address without the chain prefix
 		where: (fields, { sql }) =>
-			sql`SUBSTR(${fields.walletAddress}, INSTR(${fields.walletAddress}, ':') + 1) = ${groupAddressWithoutPrefix}`,
+			sql`${sqliteAddressFromChainAwareAddress(
+				fields.walletAddress,
+			)} = ${groupAddressWithoutPrefix}`,
 	});
 
 	if (!groupWallet || !groupWallet?.group?.id) return null;
@@ -69,14 +71,19 @@ export async function getGroupsByWalletAddresses(
 	walletAddresses: (Address | ChainAwareAddress)[],
 ) {
 	// - extract the chain prefix from the wallet address
-	const groupAddressesWithoutPrefix = walletAddresses.map((walletAddress) => (walletAddress.split(":")[1] || walletAddress) as Address)
+	const groupAddressesWithoutPrefix = walletAddresses.map(
+		(walletAddress) =>
+			(walletAddress.split(":")[1] || walletAddress) as Address,
+	);
 
 	// - query the database for a group wallet with the same address
 	const groupWallets = await db.query.groupWallets.findMany({
 		...groupWalletColumns,
 		// - compare the wallet address without the chain prefix
 		where: (fields, { sql }) =>
-			sql`SUBSTR(${fields.walletAddress}, INSTR(${fields.walletAddress}, ':') + 1) in ${groupAddressesWithoutPrefix}`,
+			sql`${sqliteAddressFromChainAwareAddress(
+				fields.walletAddress,
+			)} in ${groupAddressesWithoutPrefix}`,
 	});
 
 	if (!groupWallets || groupWallets.length === 0) return null;
@@ -89,5 +96,5 @@ export async function getGroupsByWalletAddresses(
 		},
 		pendingMembers:
 			groupWallet.group?.pendingMembers.map(({ address }) => address) || [],
-	}))
+	}));
 }

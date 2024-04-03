@@ -25,7 +25,11 @@ export async function getOwnersSafes(address: Address) {
 		const [chain, owner] = result.value;
 		if (owner) {
 			for (const safe of owner.safes) {
-				safes.push(`${chain.safe?.shortName}:${safe as Address}` satisfies ChainAwareAddress);
+				safes.push(
+					`${chain.safe?.shortName}:${
+						safe as Address
+					}` satisfies ChainAwareAddress,
+				);
 			}
 		}
 	}

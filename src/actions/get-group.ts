@@ -1,5 +1,5 @@
-import type { Address } from "viem";
 import { db } from "../db";
+import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
 
 export const getGroup = async (groupId: string) => {
 	const group = await db.query.groups.findFirst({
@@ -12,11 +12,10 @@ export const getGroup = async (groupId: string) => {
 			},
 			pendingMembers: {
 				columns: {},
-				extras: (fields, { sql }) => ({
-					address:
-						sql<Address>`SUBSTR(${fields.chainAwareAddress}, INSTR(${fields.chainAwareAddress}, ':') + 1)`.as(
-							"address",
-						),
+				extras: (fields) => ({
+					address: sqliteAddressFromChainAwareAddress(
+						fields.chainAwareAddress,
+					).as("address"),
 				}),
 			},
 		},

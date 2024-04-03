@@ -21,13 +21,17 @@ export const groupWallets = sqliteTable("group_wallets", {
 	walletAddress: text("wallet_address").$type<ChainAwareAddress>().notNull(),
 });
 
-export const pendingGroupMembers = sqliteTable("pending_group_members", {
-	...idField,
-	groupId: text("group_id").references(() => groups.id),
-	chainAwareAddress: text("address").$type<ChainAwareAddress>().notNull(),
-	status: text("status", {
-		enum: ["pending", "approved", "rejected"],
-	}).notNull(),
-}, (fields) => ({
-  uniqueMember: unique().on(fields.chainAwareAddress, fields.groupId),
-}));
+export const pendingGroupMembers = sqliteTable(
+	"pending_group_members",
+	{
+		...idField,
+		groupId: text("group_id").references(() => groups.id),
+		chainAwareAddress: text("address").$type<ChainAwareAddress>().notNull(),
+		status: text("status", {
+			enum: ["pending", "approved", "rejected"],
+		}).notNull(),
+	},
+	(fields) => ({
+		uniqueMember: unique().on(fields.chainAwareAddress, fields.groupId),
+	}),
+);

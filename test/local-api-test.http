@@ -2,6 +2,8 @@ POST http://localhost:8080/bot/create HTTP/1.1
 content-type: application/json
 
 {
+  "groupType": "safe",
+  "groupAddress": "sep:0x76e009080E15DfbBF9a8424dB2D5b6772b6B5341",
   "members": ["0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad"]
 }
 
@@ -20,4 +22,4 @@ GET http://localhost:8080/bot/safe/1 HTTP/1.1
 GET http://localhost:8080/bot/safe/10 HTTP/1.1
 
 ###
-GET http://localhost:8080/bot/check-pending-members HTTP/1.1
+GET http://localhost:8080/bot/sync-pending-members HTTP/1.1

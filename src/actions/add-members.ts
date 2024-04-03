@@ -1,11 +1,29 @@
-import * as R from "remeda";
 import type { Address } from "viem";
+import { db } from "../db";
+import type { ChainAwareAddress } from "../db/schema";
+import * as schema from "../db/schema";
 import { bot } from "../lib/xmtp/client";
 
+class MemberAddFailure extends Error {
+	constructor(
+		public address: Address,
+		public type: "existing" | "pending",
+	) {
+		super(`Failed to add member ${address} to group chat`);
+	}
+}
+
+/**
+ * Add members to a group chat
+ * @param {string} groupId
+ * @param {Address[]} members
+ * @returns {Promise<{ pendingMembers: Address[]; members: Address[] }>}
+ */
 export async function addMembers(
 	groupId: string,
 	members: Address[],
-): Promise<{ pendingMembers: Address[] }> {
+): Promise<{ pendingMembers: Address[]; members: Address[] }> {
+	let existingMembers: Address[] = [];
 	let pendingMembers: Address[] = [];
 
 	// - Try to add all the members to the group if this fails
@@ -22,17 +40,44 @@ export async function addMembers(
 		// - add members in parallel (this is slower for small numbers of members but SIGNIFICANTLY faster for large numbers of members)
 		const addPromises = await Promise.allSettled(
 			members.map((member) =>
-				bot.addMembers(groupId, [member]).catch(() => {
-					throw member;
+				bot.addMembers(groupId, [member]).catch((e) => {
+					if (
+						e.info.stderr
+							.toString()
+							.includes(
+								"AddMembers(CreateCommitError(ProposalValidationError(DuplicateSignatureKey)))",
+							)
+					) {
+						console.log("member already in group", member);
+						throw new MemberAddFailure(member, "existing");
+					} else throw new MemberAddFailure(member, "pending");
 				}),
 			),
 		);
 
 		for (const result of addPromises) {
-			if (result.status === "rejected")
-				pendingMembers.push(result.reason as Address);
+			if (result.status === "rejected" && result.reason instanceof MemberAddFailure) {
+					const { address, type } = result.reason;
+					if (type === "existing") existingMembers.push(address);
+					else pendingMembers.push(address);
+			}
 		}
 	}
 
-	return { pendingMembers: R.unique(pendingMembers) };
+
+	const successfullyAddedMembers = members.filter(
+		(member) => ![pendingMembers, existingMembers].flat().includes(member as Address),
+	);
+
+	if (pendingMembers.length !== 0)
+		await db.insert(schema.pendingGroupMembers).values(
+			pendingMembers.map((memberAddress) => ({
+				status: "pending" as const,
+				groupId,
+				// TODO: once XMTP supports contract wallets update this
+				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
+			})),
+		);
+
+	return { pendingMembers, members: successfullyAddedMembers };
 }

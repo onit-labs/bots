@@ -80,10 +80,11 @@ export async function getGroupsByWalletAddresses(
 	const groupWallets = await db.query.groupWallets.findMany({
 		...groupWalletColumns,
 		// - compare the wallet address without the chain prefix
-		where: (fields, { sql }) =>
-			sql`${sqliteAddressFromChainAwareAddress(
-				fields.walletAddress,
-			)} in ${groupAddressesWithoutPrefix}`,
+		where: (fields, { inArray }) =>
+			inArray(
+				sqliteAddressFromChainAwareAddress(fields.walletAddress),
+				groupAddressesWithoutPrefix,
+			),
 	});
 
 	if (!groupWallets || groupWallets.length === 0) return null;

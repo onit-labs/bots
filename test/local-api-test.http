@@ -23,6 +23,24 @@ content-type: application/json
 }
 
 ###
+POST http://localhost:8080/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
+content-type: application/json
+
+{
+  "type": "remove",
+  "members": ["0xD452ba2fB26fB7b529178b3fa4B96b2719ca8D46"]
+}
+
+###
+POST http://localhost:8080/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
+content-type: application/json
+
+{
+  "type": "add",
+  "members": ["0xD452ba2fB26fB7b529178b3fa4B96b2719ca8D46"]
+}
+
+###
 GET http://localhost:8080/bot/safe/1 HTTP/1.1
 
 ###

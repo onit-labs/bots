@@ -33,7 +33,7 @@ export async function addMembers(
 	// ! xmtp doesn't return a list of failed members on creation
 	try {
 		const addedMembers = await bot.addMembers(groupId, members as string[]);
-		console.log(`Group ID is ${groupId} -> Added members ${addedMembers}`);
+		console.log(`Group ID is ${groupId} -> Added members ${JSON.stringify(addedMembers)}`);
 	} catch (e) {
 		// ! if a adding members fails we need to try each of them individually to see which of the members failed
 

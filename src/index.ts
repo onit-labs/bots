@@ -6,9 +6,10 @@ import {
 import { getGroup } from "./actions/get-group";
 import { syncPendingMembers } from "./actions/sync-pending-members";
 import { AddressLiteral } from "./lib/validators";
-import { db } from "./db";
 import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
+import { addMembers } from "./actions/add-members";
+import { removeMembers } from "./actions/remove-members";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -24,10 +25,7 @@ import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-addres
  * **NOTE:** This service only handles updating the members of **deployed** safe accounts. If the account is counterfactual
  * another call will have to be made to the service once the account is deployed.
  *
- * TODO: Add a method to remove members from the group chat
- * TODO: Add a method to add members to the group chat
- * TODO: Add a method to retry adding members
- * TODO: Add a method to add a deployed counterfactual account to the group chat
+ * TODO: Add a method to link a deployed counterfactual account to the group chat
  * ! only run the next two methods if the group chat is a **deployed** safe
  * TODO: Add a job to periodically check for new members in a safe and add them to the group chat
  * TODO: Add a job to periodically check for removed members in a safe and remove them from the group chat
@@ -40,10 +38,10 @@ export default new Elysia()
 			"/",
 			async ({ params: { address } }) => {
 				// - get the addresses safes
-				const safes =  await getOwnersSafes(address);
+				const safes = await getOwnersSafes(address);
 
 				// - check for groups with the safe address
-				return await getGroupsByWalletAddresses(safes)
+				return await getGroupsByWalletAddresses(safes);
 			},
 			{ params: t.Object({ address: AddressLiteral }) },
 		);
@@ -63,14 +61,15 @@ export default new Elysia()
 				async ({ params: { groupId }, body: { members, type } }) => {
 					const group = await getGroup(groupId);
 					if (!groupId || !group) return "Invalid group id";
+					// - we only enable adding and removing members if a wallet is not already attached to the group
+					if (group.wallets.length)
+						return "Members on group chat with wallets are managed by who is a signer on each of the wallet";
 
 					switch (type) {
 						case "add":
-							// add members to group
-							return "Not implemented";
+							return addMembers(groupId, members);
 						case "remove":
-							// remove members from group
-							return "Not implemented";
+							return removeMembers(groupId, members);
 						default:
 							return "Invalid type";
 					}
@@ -99,15 +98,7 @@ export default new Elysia()
 			.post(
 				"/create",
 				async ({ body }) => {
-					const { groupAddress, groupType = "safe" } = body;
-
-					if (groupType !== "safe")
-						return "Sorry only safes are supported at the moment";
-
-					const result = await createXmtpGroup({
-						groupAddress,
-						groupType,
-					});
+					const result = await createXmtpGroup(body);
 
 					const { groupId, members, pendingMembers, deployments } = result;
 

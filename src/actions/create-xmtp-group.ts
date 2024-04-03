@@ -17,7 +17,7 @@ import { addMembers } from "./add-members";
  */
 
 export const createXmtpGroupValidator = t.Object({
-	groupAddress: AddressOrChainAwareAddress,
+	groupAddress: t.Optional(AddressOrChainAwareAddress),
 	members: t.Optional(t.Array(AddressLiteral)), // ! once xmtp supported contracts we can use this -> t.Array(AddressOrChainAwareAddress),
 	groupType: t.Optional(t.Union([t.Literal("safe"), t.Literal("party")])),
 });
@@ -54,16 +54,18 @@ export async function createXmtpGroup(
 	let { members = [] } = group;
 	let groupId: string | undefined = undefined;
 
-	// - first check if a group with this wallet already exists
-	const existingGroup = await getGroupByWalletAddress(groupAddress);
+	if (groupAddress) {
+		// - first check if a group with this wallet already exists
+		const existingGroup = await getGroupByWalletAddress(groupAddress);
 
-	if (existingGroup?.id) {
-		// ? if someone is trying to recreate a group maybe we should retrigger the sync events for this group
-		console.log("Group already exists", existingGroup);
-		return {
-			groupId: existingGroup.id,
-			pendingMembers: existingGroup.pendingMembers,
-		};
+		if (existingGroup?.id) {
+			// ? if someone is trying to recreate a group maybe we should retrigger the sync events for this group
+			console.log("Group already exists", existingGroup);
+			return {
+				groupId: existingGroup.id,
+				pendingMembers: existingGroup.pendingMembers,
+			};
+		}
 	}
 
 	// - try to create the group with only the bot
@@ -115,23 +117,8 @@ export async function createXmtpGroup(
 		// TODO: gather each of the deployed chains and insert the chainAwareAddress
 	}
 
-	const { pendingMembers } = await addMembers(groupId, members);
-
-	console.log("Pending members -> ", pendingMembers);
-
-	const successfullyAddedMembers = members.filter(
-		(member) => !pendingMembers.includes(member as Address),
-	);
-
-	if (pendingMembers.length !== 0)
-		await db.insert(schema.pendingGroupMembers).values(
-			pendingMembers.map((memberAddress) => ({
-				status: "pending" as const,
-				groupId,
-				// TODO: once XMTP supports contract wallets update this
-				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
-			})),
-		);
+	const { pendingMembers, members: successfullyAddedMembers } =
+		await addMembers(groupId, members);
 
 	return {
 		groupId,

@@ -43,7 +43,7 @@ export default new Elysia()
 				// - get the addresses safes
 				const safes = await getOwnersSafes(address);
 
-				console.log("safes", safes);
+				console.log("safes ->", safes);
 
 				// - check for groups with the safe address
 				return (await getGroupsByWalletAddresses(safes)) || [];

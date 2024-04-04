@@ -61,10 +61,11 @@ export default new Elysia()
 		}),
 	)
 	.get("/", () => "Onit XMTP bot 🤖")
-	.group("/:address", (app) => {
-		return app.get(
-			"/",
-			async ({ params: { address } }) => {
+	.group(
+		"/:address",
+		{ params: t.Object({ address: AddressLiteral }) },
+		(app) => {
+			return app.get("/", async ({ params: { address } }) => {
 				console.log("getting groups by address", address);
 				// - get the addresses safes
 				const safes = await getOwnersSafes(address);
@@ -73,10 +74,9 @@ export default new Elysia()
 
 				// - check for groups with the safe address
 				return (await getGroupsByWalletAddresses(safes)) || [];
-			},
-			{ params: t.Object({ address: AddressLiteral }) },
-		);
-	})
+			});
+		},
+	)
 	.group("/group/:groupId", (app) => {
 		return app
 			.get("/", async ({ params: { groupId } }) => {

@@ -10,6 +10,8 @@ import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
 import { removeMembers } from "./actions/remove-members";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -37,11 +39,14 @@ export default new Elysia()
 		return app.get(
 			"/",
 			async ({ params: { address } }) => {
+				console.log("getting groups by address", address);
 				// - get the addresses safes
 				const safes = await getOwnersSafes(address);
 
+				console.log("safes", safes);
+
 				// - check for groups with the safe address
-				return await getGroupsByWalletAddresses(safes);
+				return (await getGroupsByWalletAddresses(safes)) || [];
 			},
 			{ params: t.Object({ address: AddressLiteral }) },
 		);

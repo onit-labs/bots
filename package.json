@@ -1,35 +1,36 @@
 {
-	"name": "onit-xmtp-bot",
-	"module": "index.ts",
-	"type": "module",
-	"scripts": {
-		"dev": "bun --watch src/index.ts",
-		"build": "bun build src/index.ts",
-		"start": "NODE_ENV=production bun src/index.ts",
-		"test": "bun test",
-		"binary:download": "./dev/download-cli",
-		"check": "bunx @biomejs/biome check --apply .",
-		"lint": "bunx @biomejs/biome lint . --apply",
-		"format": "bunx @biomejs/biome format . --write"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "1.6.3",
-		"@types/bun": "latest",
-		"bun-types": "latest",
-		"drizzle-kit": "^0.20.14",
-		"type-fest": "^4.14.0"
-	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	},
-	"dependencies": {
-		"@safe-global/api-kit": "^2.2.0",
-		"@xmtp/grpc-api-client": "^0.2.4",
-		"@xmtp/xmtp-js": "^11.5.0",
-		"drizzle-orm": "^0.30.6",
-		"elysia": "^1.0.11",
-		"remeda": "^1.57.0",
-		"uuidv7": "^0.6.3",
-		"viem": "^2.9.5"
-	}
+  "name": "onit-xmtp-bot",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "test": "bun test",
+    "binary:download": "./dev/download-cli",
+    "check": "bunx @biomejs/biome check --apply .",
+    "lint": "bunx @biomejs/biome lint . --apply",
+    "format": "bunx @biomejs/biome format . --write"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.6.3",
+    "@types/bun": "latest",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.20.14",
+    "type-fest": "^4.14.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@safe-global/api-kit": "^2.2.0",
+    "@xmtp/grpc-api-client": "^0.2.4",
+    "@xmtp/xmtp-js": "^11.5.0",
+    "drizzle-orm": "^0.30.6",
+    "elysia": "^1.0.11",
+    "remeda": "^1.57.0",
+    "uuidv7": "^0.6.3",
+    "viem": "^2.9.5",
+    "zod": "^3.22.4"
+  }
 }

@@ -62,7 +62,7 @@ export default new Elysia()
 	)
 	.get("/", () => "Onit XMTP bot 🤖")
 	.group(
-		"/:address",
+		"/wallet/:address",
 		{ params: t.Object({ address: AddressLiteral }) },
 		(app) => {
 			return app.get("/", async ({ params: { address } }) => {

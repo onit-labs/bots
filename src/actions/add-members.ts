@@ -23,8 +23,8 @@ export async function addMembers(
 	groupId: string,
 	members: Address[],
 ): Promise<{ pendingMembers: Address[]; members: Address[] }> {
-	let existingMembers: Address[] = [];
-	let pendingMembers: Address[] = [];
+	const existingMembers: Address[] = [];
+	const pendingMembers: Address[] = [];
 
 	// - Try to add all the members to the group if this fails
 	// - then we will try to add each member individually to determine

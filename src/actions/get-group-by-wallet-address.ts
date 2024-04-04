@@ -70,11 +70,16 @@ export async function getGroupByWalletAddress(
 export async function getGroupsByWalletAddresses(
 	walletAddresses: (Address | ChainAwareAddress)[],
 ) {
+	console.log("getting groups by addresses", walletAddresses);
+
 	// - extract the chain prefix from the wallet address
 	const groupAddressesWithoutPrefix = walletAddresses.map(
 		(walletAddress) =>
 			(walletAddress.split(":")[1] || walletAddress) as Address,
 	);
+
+	if (!groupAddressesWithoutPrefix || groupAddressesWithoutPrefix.length === 0)
+		return null;
 
 	// - query the database for a group wallet with the same address
 	const groupWallets = await db.query.groupWallets.findMany({

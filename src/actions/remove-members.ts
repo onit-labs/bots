@@ -33,7 +33,11 @@ export async function removeMembers(
 			groupId,
 			existingMembersToRemove as string[],
 		);
-		console.log(`Group ID is ${groupId} -> remove members ${JSON.stringify(removedMembers)}`);
+		console.log(
+			`Group ID is ${groupId} -> remove members ${JSON.stringify(
+				removedMembers,
+			)}`,
+		);
 	} catch (e) {
 		console.log(
 			"Failed to remove members from group",
@@ -43,19 +47,19 @@ export async function removeMembers(
 	}
 
 	if (pendingMembersToRemove.length) {
-	await db
-		.delete(schema.pendingGroupMembers)
-		.where(
-			sql.join([
-				sql`${schema.pendingGroupMembers.groupId} = ${groupId}`,
-				sql` and `,
-				inArray(
-					sqliteAddressFromChainAwareAddress(
-						schema.pendingGroupMembers.chainAwareAddress,
+		await db
+			.delete(schema.pendingGroupMembers)
+			.where(
+				sql.join([
+					sql`${schema.pendingGroupMembers.groupId} = ${groupId}`,
+					sql` and `,
+					inArray(
+						sqliteAddressFromChainAwareAddress(
+							schema.pendingGroupMembers.chainAwareAddress,
+						),
+						pendingMembersToRemove as string[],
 					),
-					pendingMembersToRemove as string[],
-				),
-			]),
-		);
+				]),
+			);
 	}
 }

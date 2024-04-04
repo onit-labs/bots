@@ -15,6 +15,7 @@ export async function syncPendingMembers() {
 		const address = chainAwareAddress.split(":").at(-1);
 		if (id && groupId && address) {
 			try {
+				console.log(`adding ${address} to group ${groupId}`);
 				await bot.addMembers(groupId, [address]);
 				await db
 					.delete(schema.pendingGroupMembers)

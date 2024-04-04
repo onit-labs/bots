@@ -10,7 +10,9 @@ import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
 import { removeMembers } from "./actions/remove-members";
-import cron from "@elysiajs/cron";
+import { cron, Patterns } from "@elysiajs/cron";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -36,20 +38,25 @@ export default new Elysia()
 	.use(
 		cron({
 			name: "heartbeat",
-			pattern: "*/10 * * * * *", // every 10 seconds
+			pattern: Patterns.EVERY_10_SECONDS,
 			run() {
-				console.log("Heartbeat");
+				console.log(
+					`app.db size -> ${
+						db.get<[number]>(
+							sql`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`,
+						)[0] / 1024
+					} KB`,
+				);
 			},
 		}),
 	)
 	.use(
 		cron({
 			name: "sync-pending-members",
-			pattern: "* */5 * * * *", // every 5 minutes
+			pattern: Patterns.EVERY_5_MINUTES,
 			async run() {
 				console.log("try sync pending members");
-				const pendingMembers = await syncPendingMembers();
-				return JSON.stringify(pendingMembers, null, 4);
+				await syncPendingMembers().catch((e) => console.error(e));
 			},
 		}),
 	)

@@ -33,7 +33,9 @@ export async function addMembers(
 	// ! xmtp doesn't return a list of failed members on creation
 	try {
 		const addedMembers = await bot.addMembers(groupId, members as string[]);
-		console.log(`Group ID is ${groupId} -> Added members ${JSON.stringify(addedMembers)}`);
+		console.log(
+			`Group ID is ${groupId} -> Added members ${JSON.stringify(addedMembers)}`,
+		);
 	} catch (e) {
 		// ! if a adding members fails we need to try each of them individually to see which of the members failed
 
@@ -50,23 +52,27 @@ export async function addMembers(
 					) {
 						console.log("member already in group", member);
 						throw new MemberAddFailure(member, "existing");
-					} else throw new MemberAddFailure(member, "pending");
+					}
+					throw new MemberAddFailure(member, "pending");
 				}),
 			),
 		);
 
 		for (const result of addPromises) {
-			if (result.status === "rejected" && result.reason instanceof MemberAddFailure) {
-					const { address, type } = result.reason;
-					if (type === "existing") existingMembers.push(address);
-					else pendingMembers.push(address);
+			if (
+				result.status === "rejected" &&
+				result.reason instanceof MemberAddFailure
+			) {
+				const { address, type } = result.reason;
+				if (type === "existing") existingMembers.push(address);
+				else pendingMembers.push(address);
 			}
 		}
 	}
 
-
 	const successfullyAddedMembers = members.filter(
-		(member) => ![pendingMembers, existingMembers].flat().includes(member as Address),
+		(member) =>
+			![pendingMembers, existingMembers].flat().includes(member as Address),
 	);
 
 	if (pendingMembers.length !== 0)

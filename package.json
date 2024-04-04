@@ -23,6 +23,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@elysiajs/cron": "^1.0.3",
     "@safe-global/api-kit": "^2.2.0",
     "@xmtp/grpc-api-client": "^0.2.4",
     "@xmtp/xmtp-js": "^11.5.0",

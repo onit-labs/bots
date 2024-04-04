@@ -10,8 +10,7 @@ import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
 import { removeMembers } from "./actions/remove-members";
-import { db } from "./db";
-import { sql } from "drizzle-orm";
+import cron from "@elysiajs/cron";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -34,6 +33,26 @@ import { sql } from "drizzle-orm";
  */
 
 export default new Elysia()
+	.use(
+		cron({
+			name: "heartbeat",
+			pattern: "*/10 * * * * *", // every 10 seconds
+			run() {
+				console.log("Heartbeat");
+			},
+		}),
+	)
+	.use(
+		cron({
+			name: "sync-pending-members",
+			pattern: "* */5 * * * *", // every 5 minutes
+			async run() {
+				console.log("try sync pending members");
+				const pendingMembers = await syncPendingMembers();
+				return JSON.stringify(pendingMembers, null, 4);
+			},
+		}),
+	)
 	.get("/", () => "Onit XMTP bot 🤖")
 	.group("/:address", (app) => {
 		return app.get(
@@ -91,6 +110,9 @@ export default new Elysia()
 				return (await getGroup(groupId))?.wallets || [];
 			})
 			.post("/link-wallet", async ({ params: { groupId }, body }) => {
+				// TODO: check that each member is a member of the group
+				// TODO: if so then add the wallet to the group
+				// TODO: if not return an error
 				return "Not implemented";
 			});
 	})

@@ -9,6 +9,7 @@ import { bot } from "../lib/xmtp/client";
 import { getDeployments } from "./get-deployments";
 import { getGroupByWalletAddress } from "./get-group-by-wallet-address";
 import { addMembers } from "./add-members";
+import type { CliError } from "../lib/xmtp/cli";
 
 /**
  * TODO: ?
@@ -74,13 +75,16 @@ export async function createXmtpGroup(
 		if (groupId) await db.insert(schema.groups).values({ id: groupId });
 	} catch (e) {
 		console.log("failed to create group", groupId);
-		console.error("error code ->", (e as any).exitCode);
-		console.error("error ->", (e as any).stderr.toString());
-	} finally {
-		if (!groupId) {
-			console.log("Failed to create group");
-			return { groupId: undefined };
+		if (e instanceof Error) console.error(e.message);
+		if (e && typeof e === "object" && "exitCode" in e && "stderr" in e) {
+			console.error("error code ->", (e as CliError).exitCode);
+			console.error("error ->", (e as CliError).stderr.toString());
 		}
+	}
+
+	if (!groupId) {
+		console.log("Failed to create group");
+		return { groupId: undefined };
 	}
 
 	let deployments: Awaited<ReturnType<typeof getDeployments>> | undefined =

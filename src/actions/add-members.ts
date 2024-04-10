@@ -32,19 +32,32 @@ export async function addMembers(
 	// ! we have to do this because atm there is no good way to check if the user is on the network &
 	// ! xmtp doesn't return a list of failed members on creation
 	try {
+		// tODO: there is an issue where XMTP will add members who aren't on the network
+		// TODO: see https://github.com/xmtp/libxmtp/issues/613
 		const addedMembers = await bot.addMembers(groupId, members as string[]);
 		approvedMembers.push(...members);
 		console.log(
-			`Group ID is ${groupId} -> Added members ${JSON.stringify(addedMembers)}`,
+			`Created Group with id ${groupId} -> Added members ${members} -> full response ${JSON.stringify(
+				addedMembers,
+				null,
+				2,
+			)}`,
 		);
 	} catch (e) {
 		// ! if a adding members fails we need to try each of them individually to see which of the members failed
 
 		// - add members in parallel (this is slower for small numbers of members but SIGNIFICANTLY faster for large numbers of members)
 		const addPromises = await Promise.allSettled(
-			members.map((member) =>
-				bot.addMembers(groupId, [member]).catch((e) => {
+			members.map(async (member) => {
+				try {
+					await bot.addMembers(groupId, [member]);
+
+					console.log("added member", member);
+					approvedMembers.push(member);
+				} catch (e) {
+					console.log("Failed to add member", member, e);
 					if (
+						// @ts-ignore
 						e.info.stderr
 							.toString()
 							.includes(
@@ -55,8 +68,8 @@ export async function addMembers(
 						throw new MemberAddFailure(member, "existing");
 					}
 					throw new MemberAddFailure(member, "pending");
-				}),
-			),
+				}
+			}),
 		);
 
 		for (const result of addPromises) {
@@ -71,30 +84,38 @@ export async function addMembers(
 		}
 	}
 
-	const successfullyAddedMembers = members.filter(
-		(member) =>
-			![pendingMembers, approvedMembers].flat().includes(member as Address),
-	);
+	if (approvedMembers.length !== 0 || pendingMembers.length !== 0)
+		await db
+			.insert(schema.groupMembers)
+			.values([
+				...approvedMembers.map((memberAddress) => ({
+					status: "approved" as const,
+					groupId,
+					// TODO: once XMTP supports contract wallets update this
+					chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
+				})),
+				...pendingMembers.map((memberAddress) => ({
+					status: "pending" as const,
+					groupId,
+					// TODO: once XMTP supports contract wallets update this
+					chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
+				})),
+			])
+			.catch((e) => {
+				console.error(
+					"Failed to insert members into database",
+					e,
+					JSON.stringify(
+						{
+							members,
+							pendingMembers,
+							approvedMembers,
+						},
+						null,
+						2,
+					),
+				);
+			});
 
-	if (successfullyAddedMembers.length !== 0)
-		await db.insert(schema.groupMembers).values(
-			successfullyAddedMembers.map((memberAddress) => ({
-				status: "approved" as const,
-				groupId,
-				// TODO: once XMTP supports contract wallets update this
-				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
-			})),
-		);
-
-	if (pendingMembers.length !== 0)
-		await db.insert(schema.groupMembers).values(
-			pendingMembers.map((memberAddress) => ({
-				status: "pending" as const,
-				groupId,
-				// TODO: once XMTP supports contract wallets update this
-				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
-			})),
-		);
-
-	return { pendingMembers, members: successfullyAddedMembers };
+	return { pendingMembers, members: approvedMembers };
 }

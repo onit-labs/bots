@@ -1,5 +1,9 @@
 import { sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import {
+	relations,
+	type InferInsertModel,
+	type InferSelectModel,
+} from "drizzle-orm";
 import { generateUuid7 } from "../lib/uuid";
 import type { Uuidv7 } from "../lib/validators";
 import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
@@ -16,7 +20,7 @@ const idField = {
 };
 
 /**
- * - Views
+ * - Tables
  */
 
 export const groups = sqliteTable("groups", {
@@ -67,3 +71,17 @@ export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
 		references: [groups.id],
 	}),
 }));
+
+/**
+ * - Types
+ */
+
+export type Group = InferSelectModel<typeof groups>;
+export type InsertGroup = InferInsertModel<typeof groups>;
+
+export type GroupMember = InferSelectModel<typeof groupMembers>;
+export type GroupMemberStatus = InferSelectModel<typeof groupMembers>["status"];
+export type InsertGroupMember = InferInsertModel<typeof groupMembers>;
+
+export type GroupWallet = InferSelectModel<typeof groupWallets>;
+export type InsertGroupWallet = InferInsertModel<typeof groupWallets>;

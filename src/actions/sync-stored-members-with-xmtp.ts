@@ -3,6 +3,7 @@ import * as schema from "../db/schema";
 import { db } from "../db";
 import { bot } from "../lib/xmtp/client";
 import type { ChainAwareAddress } from "../db/schema";
+import { getWalletClient } from "../lib/eth/clients";
 
 /**
  * Syncs the database member state with the on network XMTP group chat member state
@@ -24,6 +25,11 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 	});
 
 	for (const group of groups) {
+		// - only sync the members for the provided group if defined
+		if (groupId && group.group_id !== groupId) {
+			continue;
+		}
+
 		const storedMembers = members.filter((m) => m.groupId === group.group_id);
 
 		if (storedMembers.length === 0) {
@@ -34,6 +40,17 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 
 			// - store the group is not found
 			if (!storedGroup) {
+				const { walletClient } = getWalletClient();
+				if (
+					group.metdata.creator_account_address.toLowerCase() !==
+						walletClient.account.address.toLowerCase() ||
+					group.metdata.policy !== "GroupCreatorIsAdmin"
+				) {
+					// - this is not a group that we don't manage so we do nothing
+					// ? maybe we remove this in the future
+					return;
+				}
+
 				await db.insert(schema.groups).values({
 					id: group.group_id,
 				});

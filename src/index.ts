@@ -5,7 +5,7 @@ import {
 } from "./actions/create-xmtp-group";
 import { getGroup } from "./actions/get-group";
 import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
-import { retryAddPendingMembers } from "./actions/retry-add-pending-members";
+import { retryPendingMembers } from "./actions/retry-pending-members";
 import {
 	AddressLiteral,
 	ChainAwareAddressLiteral,
@@ -76,7 +76,7 @@ export default new Elysia()
 			pattern: Patterns.EVERY_5_MINUTES,
 			async run() {
 				console.log("retry add pending members");
-				await retryAddPendingMembers().catch((e) => console.error(e));
+				await retryPendingMembers().catch((e) => console.error(e));
 			},
 		}),
 	)
@@ -212,13 +212,13 @@ export default new Elysia()
 				},
 			)
 			.get(
-				"/retry-add-pending-members",
+				"/retry-pending-members",
 				async ({ query: { groupId } }) => {
-					const pendingMembers = await retryAddPendingMembers(groupId);
+					const pendingMembers = await retryPendingMembers(groupId);
 					return JSON.stringify(pendingMembers, null, 4);
 				},
 				{
-					query: t.Object({ groupId: t.String() }),
+					query: t.Object({ groupId: t.Optional(t.String()) }),
 				},
 			)
 			.post(

@@ -52,7 +52,7 @@ content-type: application/json
 GET http://localhost:8080/bot/sync-members HTTP/1.1
 
 ###
-GET http://localhost:8080/bot/sync-pending-members HTTP/1.1
+GET http://localhost:8080/bot/retry-pending-members HTTP/1.1
 
 ###
 GET http://localhost:8080/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1

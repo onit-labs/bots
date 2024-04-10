@@ -4,7 +4,8 @@ import {
 	createXmtpGroupValidator,
 } from "./actions/create-xmtp-group";
 import { getGroup } from "./actions/get-group";
-import { syncPendingMembers } from "./actions/sync-pending-members";
+import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
+import { retryAddPendingMembers } from "./actions/retry-add-pending-members";
 import {
 	AddressLiteral,
 	ChainAwareAddressLiteral,
@@ -61,11 +62,21 @@ export default new Elysia()
 	)
 	.use(
 		cron({
-			name: "sync-pending-members",
+			name: "sync-members-with-xmtp",
 			pattern: Patterns.EVERY_5_MINUTES,
 			async run() {
-				console.log("try sync pending members");
-				await syncPendingMembers().catch((e) => console.error(e));
+				console.log("sync members with xmtp");
+				await syncStoredMembersWithXmtp().catch((e) => console.error(e));
+			},
+		}),
+	)
+	.use(
+		cron({
+			name: "retry-add-pending-members",
+			pattern: Patterns.EVERY_5_MINUTES,
+			async run() {
+				console.log("retry add pending members");
+				await retryAddPendingMembers().catch((e) => console.error(e));
 			},
 		}),
 	)
@@ -99,14 +110,6 @@ export default new Elysia()
 		return app
 			.get("/", async ({ params: { groupId } }) => {
 				if (!groupId) return "Invalid group id";
-				const start = performance.now();
-				console.log(
-					"getting group",
-					groupId,
-					await bot.listGroups(),
-					`took -> ${performance.now() - start}ms`,
-				);
-
 				return await getGroup(groupId);
 			})
 			.get("/members", async ({ params: { groupId } }) => {
@@ -199,9 +202,19 @@ export default new Elysia()
 	.group("/bot", (app) => {
 		return app
 			.get(
-				"/sync-pending-members",
+				"/sync-members",
 				async ({ query: { groupId } }) => {
-					const pendingMembers = await syncPendingMembers(groupId);
+					const members = await syncStoredMembersWithXmtp(groupId);
+					return JSON.stringify(members, null, 4);
+				},
+				{
+					query: t.Object({ groupId: t.Optional(t.String()) }),
+				},
+			)
+			.get(
+				"/retry-add-pending-members",
+				async ({ query: { groupId } }) => {
+					const pendingMembers = await retryAddPendingMembers(groupId);
 					return JSON.stringify(pendingMembers, null, 4);
 				},
 				{

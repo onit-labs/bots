@@ -23,6 +23,14 @@ content-type: application/json
 }
 
 ###
+POST http://localhost:8080/bot/create HTTP/1.1
+content-type: application/json
+
+{
+  "members": ["0xDdD77754e23f2EA8bCd05D43C25084c6C81e82D8", "0xAF3fCab790DC38bCFcD6a19422c559d0aB57b29F", "0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad"]
+}
+
+###
 POST http://localhost:8080/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
 content-type: application/json
 
@@ -41,16 +49,16 @@ content-type: application/json
 }
 
 ###
-GET http://localhost:8080/bot/safe/1 HTTP/1.1
-
-###
-GET http://localhost:8080/bot/safe/10 HTTP/1.1
+GET http://localhost:8080/bot/sync-members HTTP/1.1
 
 ###
 GET http://localhost:8080/bot/sync-pending-members HTTP/1.1
 
 ###
-GET http://localhost:8080/group/1 HTTP/1.1
+GET http://localhost:8080/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1
+
+###
+GET http://localhost:8080/group/ec3fe61731df69f89bdb973c2bbe3199 HTTP/1.1
 
 ###
 GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1 HTTP/1.1

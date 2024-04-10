@@ -3,7 +3,7 @@ import * as schema from "../db/schema";
 import { db } from "../db";
 import { bot } from "../lib/xmtp/client";
 
-export async function syncPendingMembers(groupId?: string) {
+export async function retryAddPendingMembers(groupId?: string) {
 	// - get the pending members
 	const pendingMembers = await db.query.groupMembers.findMany({
 		where: (fields, { eq }) =>

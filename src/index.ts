@@ -99,11 +99,19 @@ export default new Elysia()
 		return app
 			.get("/", async ({ params: { groupId } }) => {
 				if (!groupId) return "Invalid group id";
+				const start = performance.now();
+				console.log(
+					"getting group",
+					groupId,
+					await bot.listGroups(),
+					`took -> ${performance.now() - start}ms`,
+				);
+
 				return await getGroup(groupId);
 			})
 			.get("/members", async ({ params: { groupId } }) => {
 				if (!groupId) return "Invalid group id";
-				return (await getGroup(groupId))?.pendingMembers || [];
+				return (await getGroup(groupId))?.members || [];
 			})
 			.post(
 				"/members",
@@ -190,24 +198,24 @@ export default new Elysia()
 	})
 	.group("/bot", (app) => {
 		return app
-			.get("/sync-pending-members", async () => {
-				const pendingMembers = await syncPendingMembers();
-				return JSON.stringify(pendingMembers, null, 4);
-			})
+			.get(
+				"/sync-pending-members",
+				async ({ query: { groupId } }) => {
+					const pendingMembers = await syncPendingMembers(groupId);
+					return JSON.stringify(pendingMembers, null, 4);
+				},
+				{
+					query: t.Object({ groupId: t.String() }),
+				},
+			)
 			.post(
 				"/create",
 				async ({ body }) => {
 					const result = await createXmtpGroup(body);
 
-					const { groupId, members, pendingMembers, deployments } = result;
+					const { groupId, members, deployments } = result;
 
-					console.log(
-						"Created group",
-						groupId,
-						members,
-						pendingMembers,
-						deployments,
-					);
+					console.log("Created group", groupId, members, deployments);
 
 					if (!groupId) return "Failed to create group";
 

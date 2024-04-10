@@ -83,9 +83,6 @@ export default new Elysia()
 	.get("/", async () => {
 		if (process.env.NODE_ENV === "development") {
 			console.log("groups", await bot.listGroups());
-			await bot
-				.send("5eb5b1fa27adc585a75cdedd6a1d4d5d", "Hello")
-				.catch(console.error);
 		}
 
 		return "Onit XMTP bot 🤖";

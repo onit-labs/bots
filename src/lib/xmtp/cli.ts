@@ -72,7 +72,7 @@ export async function createClient(dbPath: string) {
 					groups: {
 						group_id: string;
 						members: Address[];
-						metdata: {
+						metadata: {
 							creator_account_address: Address;
 							policy: "GroupCreatorIsAdmin" | "EveryoneIsAdmin";
 						};

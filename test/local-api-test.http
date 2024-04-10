@@ -72,7 +72,7 @@ GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.
 
 
 ###
-GET http://localhost:8080/0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad HTTP/1.1
+GET http://localhost:8080/wallet/0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad HTTP/1.1
 
 ###
 GET http://localhost:8080/group/ed4ac987e6556dc8802bb7d0fce39d1d/link-wallet/basesep:0xaC03aD602D6786e7E87566192b48e30666e327Ad HTTP/1.1

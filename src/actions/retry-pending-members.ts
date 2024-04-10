@@ -1,3 +1,4 @@
+import * as R from "remeda";
 import { and, eq } from "drizzle-orm";
 import * as schema from "../db/schema";
 import { db } from "../db";
@@ -13,7 +14,12 @@ export async function retryPendingMembers(groupId?: string) {
 				: eq(fields.status, "pending"),
 	});
 
-	await Promise.allSettled(pendingMembers.map(retryAddMember));
+	const batchedPromises = R.chunk(pendingMembers.map(retryAddMember), 10);
+
+	for (const batch of batchedPromises) {
+		// TODO: maybe we should also have a delay?
+		await Promise.allSettled(batch);
+	}
 }
 
 /**

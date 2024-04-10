@@ -5,7 +5,7 @@ import { bot } from "../lib/xmtp/client";
 
 export async function syncPendingMembers() {
 	// - get the pending members
-	const pendingMembers = await db.query.pendingGroupMembers.findMany({
+	const pendingMembers = await db.query.groupMembers.findMany({
 		where: (fields, { eq }) => eq(fields.status, "pending"),
 	});
 
@@ -18,8 +18,8 @@ export async function syncPendingMembers() {
 				console.log(`adding ${address} to group ${groupId}`);
 				await bot.addMembers(groupId, [address]);
 				await db
-					.delete(schema.pendingGroupMembers)
-					.where(eq(schema.pendingGroupMembers.id, id));
+					.delete(schema.groupMembers)
+					.where(eq(schema.groupMembers.id, id));
 			} catch (e) {
 				console.error(
 					`failed to add ${address} to group ${pendingMember.groupId}`,

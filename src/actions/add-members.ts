@@ -76,7 +76,7 @@ export async function addMembers(
 	);
 
 	if (pendingMembers.length !== 0)
-		await db.insert(schema.pendingGroupMembers).values(
+		await db.insert(schema.groupMembers).values(
 			pendingMembers.map((memberAddress) => ({
 				status: "pending" as const,
 				groupId,

@@ -48,17 +48,20 @@ export async function removeMembers(
 
 	if (pendingMembersToRemove.length) {
 		await db
-			.delete(schema.pendingGroupMembers)
+			.update(schema.groupMembers)
+			.set({ status: "approved" })
 			.where(
 				sql.join([
-					sql`${schema.pendingGroupMembers.groupId} = ${groupId}`,
+					sql`${schema.groupMembers.groupId} = ${groupId}`,
 					sql` and `,
 					inArray(
 						sqliteAddressFromChainAwareAddress(
-							schema.pendingGroupMembers.chainAwareAddress,
+							schema.groupMembers.chainAwareAddress,
 						),
 						pendingMembersToRemove as string[],
 					),
+					sql` and `,
+					sql`${schema.groupMembers.status} = 'pending'`,
 				]),
 			);
 	}

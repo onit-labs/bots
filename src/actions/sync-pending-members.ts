@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as schema from "../db/schema";
 import { db } from "../db";
 import { bot } from "../lib/xmtp/client";
@@ -18,8 +18,14 @@ export async function syncPendingMembers() {
 				console.log(`adding ${address} to group ${groupId}`);
 				await bot.addMembers(groupId, [address]);
 				await db
-					.delete(schema.groupMembers)
-					.where(eq(schema.groupMembers.id, id));
+					.update(schema.groupMembers)
+					.set({ status: "approved" as const })
+					.where(
+						and(
+							eq(schema.groupMembers.id, id),
+							eq(schema.groupMembers.chainAwareAddress, chainAwareAddress),
+						),
+					);
 			} catch (e) {
 				console.error(
 					`failed to add ${address} to group ${pendingMember.groupId}`,

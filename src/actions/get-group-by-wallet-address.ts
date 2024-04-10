@@ -12,8 +12,8 @@ const groupWalletColumns = {
 		group: {
 			columns: { id: true },
 			with: {
-				pendingMembers: {
-					columns: {},
+				members: {
+					columns: { status: true },
 					extras: (fields) => ({
 						address: sqliteAddressFromChainAwareAddress(
 							fields.chainAwareAddress,
@@ -62,8 +62,6 @@ export async function getGroupByWalletAddress(
 			type: groupWallet.type,
 			walletAddress: groupWallet.walletAddress,
 		},
-		pendingMembers:
-			groupWallet.group?.pendingMembers.map(({ address }) => address) || [],
 	};
 }
 
@@ -100,7 +98,5 @@ export async function getGroupsByWalletAddresses(
 			type: groupWallet.type,
 			walletAddress: groupWallet.walletAddress,
 		},
-		pendingMembers:
-			groupWallet.group?.pendingMembers.map(({ address }) => address) || [],
 	}));
 }

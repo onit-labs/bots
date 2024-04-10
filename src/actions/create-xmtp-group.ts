@@ -10,6 +10,7 @@ import { getDeployments } from "./get-deployments";
 import { getGroupByWalletAddress } from "./get-group-by-wallet-address";
 import { addMembers } from "./add-members";
 import type { CliError } from "../lib/xmtp/cli";
+import { getGroup } from "./get-group";
 
 /**
  * TODO: ?
@@ -37,8 +38,7 @@ export const createXmtpGroupValidator = t.Object({
  *                                                          and each wallet will be added to the group
  * @returns {Promise<{
  *   groupId: string | undefined;
- *   members?: Address[];
- *   pendingMembers?: Address[];
+ *   members?: Array<{ status: "pending" | "approved" | "rejected"; address: Address }>;
  *   deployments?: ReturnType<typeof getDeployments>;
  *  }>
  * }
@@ -47,8 +47,10 @@ export async function createXmtpGroup(
 	group: Static<typeof createXmtpGroupValidator>,
 ): Promise<{
 	groupId: string | undefined;
-	members?: Address[];
-	pendingMembers?: Address[];
+	members?: Array<{
+		status: "pending" | "approved" | "rejected";
+		address: Address;
+	}>;
 	deployments?: Awaited<ReturnType<typeof getDeployments>>;
 }> {
 	const { groupAddress, groupType = "safe" } = group;
@@ -64,7 +66,7 @@ export async function createXmtpGroup(
 			console.log("Group already exists", existingGroup);
 			return {
 				groupId: existingGroup.id,
-				pendingMembers: existingGroup.pendingMembers,
+				members: existingGroup.members,
 			};
 		}
 	}
@@ -124,13 +126,16 @@ export async function createXmtpGroup(
 	const { pendingMembers, members: successfullyAddedMembers } =
 		await addMembers(groupId, members);
 
+	console.log(
+		" createXmtpGroup - pendingMembers ->",
+		pendingMembers,
+		" createXmtpGroup - successfullyAddedMembers ->",
+		successfullyAddedMembers,
+	);
+
 	return {
 		groupId,
+		...(await getGroup(groupId)),
 		...(deployments && deployments.length > 0 && { deployments }),
-		...(pendingMembers && pendingMembers.length > 0 && { pendingMembers }),
-		...(successfullyAddedMembers &&
-			successfullyAddedMembers.length > 0 && {
-				members: successfullyAddedMembers,
-			}),
 	};
 }

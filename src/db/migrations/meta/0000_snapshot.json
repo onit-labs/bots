@@ -1,130 +1,141 @@
 {
-	"version": "5",
-	"dialect": "sqlite",
-	"id": "a314f8d9-4fe5-4fab-81cb-9d552ad990a7",
-	"prevId": "00000000-0000-0000-0000-000000000000",
-	"tables": {
-		"group_wallets": {
-			"name": "group_wallets",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false,
-					"autoincrement": false
-				},
-				"type": {
-					"name": "type",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"group_id": {
-					"name": "group_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false,
-					"autoincrement": false
-				},
-				"wallet_address": {
-					"name": "wallet_address",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {
-				"group_wallets_group_id_groups_id_fk": {
-					"name": "group_wallets_group_id_groups_id_fk",
-					"tableFrom": "group_wallets",
-					"tableTo": "groups",
-					"columnsFrom": ["group_id"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"groups": {
-			"name": "groups",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false,
-					"autoincrement": false
-				}
-			},
-			"indexes": {},
-			"foreignKeys": {},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		},
-		"pending_group_members": {
-			"name": "pending_group_members",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false,
-					"autoincrement": false
-				},
-				"group_id": {
-					"name": "group_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": false,
-					"autoincrement": false
-				},
-				"address": {
-					"name": "address",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"status": {
-					"name": "status",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				}
-			},
-			"indexes": {
-				"pending_group_members_address_group_id_unique": {
-					"name": "pending_group_members_address_group_id_unique",
-					"columns": ["address", "group_id"],
-					"isUnique": true
-				}
-			},
-			"foreignKeys": {
-				"pending_group_members_group_id_groups_id_fk": {
-					"name": "pending_group_members_group_id_groups_id_fk",
-					"tableFrom": "pending_group_members",
-					"tableTo": "groups",
-					"columnsFrom": ["group_id"],
-					"columnsTo": ["id"],
-					"onDelete": "no action",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {}
-		}
-	},
-	"enums": {},
-	"_meta": {
-		"schemas": {},
-		"tables": {},
-		"columns": {}
-	}
+  "version": "5",
+  "dialect": "sqlite",
+  "id": "6b311824-03cc-418d-a8ce-9c933171d59a",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "group_members": {
+      "name": "group_members",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "group_members_address_group_id_unique": {
+          "name": "group_members_address_group_id_unique",
+          "columns": [
+            "address",
+            "group_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "group_members_group_id_groups_id_fk": {
+          "name": "group_members_group_id_groups_id_fk",
+          "tableFrom": "group_members",
+          "tableTo": "groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "group_wallets": {
+      "name": "group_wallets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "wallet_address": {
+          "name": "wallet_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "group_wallets_group_id_groups_id_fk": {
+          "name": "group_wallets_group_id_groups_id_fk",
+          "tableFrom": "group_wallets",
+          "tableTo": "groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "groups": {
+      "name": "groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
 }

@@ -30,8 +30,8 @@ export const groupWallets = sqliteTable("group_wallets", {
 	walletAddress: text("wallet_address").$type<ChainAwareAddress>().notNull(),
 });
 
-export const pendingGroupMembers = sqliteTable(
-	"pending_group_members",
+export const groupMembers = sqliteTable(
+	"group_members",
 	{
 		...idField,
 		groupId: text("group_id").references(() => groups.id),
@@ -51,7 +51,7 @@ export const pendingGroupMembers = sqliteTable(
 
 export const groupsRelations = relations(groups, ({ many }) => ({
 	wallets: many(groupWallets),
-	pendingMembers: many(pendingGroupMembers),
+	pendingMembers: many(groupMembers),
 }));
 
 export const groupWalletsRelations = relations(groupWallets, ({ one }) => ({
@@ -61,12 +61,9 @@ export const groupWalletsRelations = relations(groupWallets, ({ one }) => ({
 	}),
 }));
 
-export const pendingGroupMembersRelations = relations(
-	pendingGroupMembers,
-	({ one }) => ({
-		group: one(groups, {
-			fields: [pendingGroupMembers.groupId],
-			references: [groups.id],
-		}),
+export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
+	group: one(groups, {
+		fields: [groupMembers.groupId],
+		references: [groups.id],
 	}),
-);
+}));

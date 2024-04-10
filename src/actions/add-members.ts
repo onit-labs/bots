@@ -23,7 +23,7 @@ export async function addMembers(
 	groupId: string,
 	members: Address[],
 ): Promise<{ pendingMembers: Address[]; members: Address[] }> {
-	const existingMembers: Address[] = [];
+	const approvedMembers: Address[] = [];
 	const pendingMembers: Address[] = [];
 
 	// - Try to add all the members to the group if this fails
@@ -33,6 +33,7 @@ export async function addMembers(
 	// ! xmtp doesn't return a list of failed members on creation
 	try {
 		const addedMembers = await bot.addMembers(groupId, members as string[]);
+		approvedMembers.push(...members);
 		console.log(
 			`Group ID is ${groupId} -> Added members ${JSON.stringify(addedMembers)}`,
 		);
@@ -64,7 +65,7 @@ export async function addMembers(
 				result.reason instanceof MemberAddFailure
 			) {
 				const { address, type } = result.reason;
-				if (type === "existing") existingMembers.push(address);
+				if (type === "existing") approvedMembers.push(address);
 				else pendingMembers.push(address);
 			}
 		}
@@ -72,8 +73,18 @@ export async function addMembers(
 
 	const successfullyAddedMembers = members.filter(
 		(member) =>
-			![pendingMembers, existingMembers].flat().includes(member as Address),
+			![pendingMembers, approvedMembers].flat().includes(member as Address),
 	);
+
+	if (successfullyAddedMembers.length !== 0)
+		await db.insert(schema.groupMembers).values(
+			successfullyAddedMembers.map((memberAddress) => ({
+				status: "approved" as const,
+				groupId,
+				// TODO: once XMTP supports contract wallets update this
+				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
+			})),
+		);
 
 	if (pendingMembers.length !== 0)
 		await db.insert(schema.groupMembers).values(

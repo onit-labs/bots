@@ -9,7 +9,7 @@ import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-c
 
 export async function removeMembers(
 	groupId: string,
-	members: Address[],
+	membersToRemove: Address[],
 ): Promise<void> {
 	const group = await getGroup(groupId);
 
@@ -17,21 +17,18 @@ export async function removeMembers(
 		throw new Error(`Group with ID ${groupId} not found`);
 	}
 
-	const pendingMembersToRemove = R.intersectionWith(
-		members,
-		group.pendingMembers,
-		R.equals,
-	);
-	const existingMembersToRemove = R.differenceWith(
-		members,
-		group.pendingMembers,
-		R.equals,
-	);
+	const { pending: pendingMemberAddresses, approved: approvedMemberAddresses } =
+		R.pipe(
+			group.members,
+			R.filter((member) => membersToRemove.includes(member.address)),
+			R.groupBy((member) => member.status),
+			R.mapValues((value) => value.map(({ address }) => address)),
+		);
 
 	try {
 		const removedMembers = await bot.removeMembers(
 			groupId,
-			existingMembersToRemove as string[],
+			approvedMemberAddresses,
 		);
 		console.log(
 			`Group ID is ${groupId} -> remove members ${JSON.stringify(
@@ -42,14 +39,13 @@ export async function removeMembers(
 		console.log(
 			"Failed to remove members from group",
 			e,
-			existingMembersToRemove,
+			approvedMemberAddresses,
 		);
 	}
 
-	if (pendingMembersToRemove.length) {
+	if (pendingMemberAddresses.length) {
 		await db
-			.update(schema.groupMembers)
-			.set({ status: "approved" })
+			.delete(schema.groupMembers)
 			.where(
 				sql.join([
 					sql`${schema.groupMembers.groupId} = ${groupId}`,
@@ -58,10 +54,8 @@ export async function removeMembers(
 						sqliteAddressFromChainAwareAddress(
 							schema.groupMembers.chainAwareAddress,
 						),
-						pendingMembersToRemove as string[],
+						pendingMemberAddresses as string[],
 					),
-					sql` and `,
-					sql`${schema.groupMembers.status} = 'pending'`,
 				]),
 			);
 	}

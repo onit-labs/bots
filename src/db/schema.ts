@@ -51,7 +51,7 @@ export const groupMembers = sqliteTable(
 
 export const groupsRelations = relations(groups, ({ many }) => ({
 	wallets: many(groupWallets),
-	pendingMembers: many(groupMembers),
+	members: many(groupMembers),
 }));
 
 export const groupWalletsRelations = relations(groupWallets, ({ one }) => ({

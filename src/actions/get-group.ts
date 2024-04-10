@@ -2,7 +2,7 @@ import { db } from "../db";
 import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
 
 export const getGroup = async (groupId: string) => {
-	const group = await db.query.groups.findFirst({
+	return await db.query.groups.findFirst({
 		with: {
 			wallets: {
 				columns: {
@@ -10,8 +10,8 @@ export const getGroup = async (groupId: string) => {
 					walletAddress: true,
 				},
 			},
-			pendingMembers: {
-				columns: {},
+			members: {
+				columns: { status: true },
 				extras: (fields) => ({
 					address: sqliteAddressFromChainAwareAddress(
 						fields.chainAwareAddress,
@@ -21,11 +21,4 @@ export const getGroup = async (groupId: string) => {
 		},
 		where: (fields, { eq }) => eq(fields.id, groupId),
 	});
-
-	return group
-		? {
-				...group,
-				pendingMembers: group.pendingMembers.map(({ address }) => address),
-			}
-		: null;
 };

@@ -1,16 +1,26 @@
-import { Elysia, t } from 'elysia'
-import { createXmtpGroup, createXmtpGroupValidator } from './actions/create-xmtp-group'
-import { getGroup } from './actions/get-group'
-import { syncPendingMembers } from './actions/sync-pending-members'
-import { AddressLiteral } from './lib/validators'
-import { getOwnersSafes } from './actions/get-owners-safes'
-import { getGroupsByWalletAddresses } from './actions/get-group-by-wallet-address'
-import { addMembers } from './actions/add-members'
-import { removeMembers } from './actions/remove-members'
-import { cron, Patterns } from '@elysiajs/cron'
-import { db } from './db'
-import { sql } from 'drizzle-orm'
-import { bot } from './lib/xmtp/client'
+import { Elysia, t } from "elysia";
+import {
+	createXmtpGroup,
+	createXmtpGroupValidator,
+} from "./actions/create-xmtp-group";
+import { getGroup } from "./actions/get-group";
+import { syncPendingMembers } from "./actions/sync-pending-members";
+import {
+	AddressLiteral,
+	ChainAwareAddressLiteral,
+	HexLiteral,
+} from "./lib/validators";
+import { getOwnersSafes } from "./actions/get-owners-safes";
+import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
+import { addMembers } from "./actions/add-members";
+import { removeMembers } from "./actions/remove-members";
+import { cron, Patterns } from "@elysiajs/cron";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import { bot } from "./lib/xmtp/client";
+import { getLinkWalletEIP712TypedData } from "./lib/eth/link-wallet-sign-typed-data";
+import { verifyTypedData } from "viem";
+import { TypedDataDomain } from "abitype/zod";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -36,7 +46,7 @@ import { bot } from './lib/xmtp/client'
 export default new Elysia()
 	.use(
 		cron({
-			name: 'heartbeat',
+			name: "heartbeat",
 			pattern: Patterns.EVERY_10_SECONDS,
 			run() {
 				console.log(
@@ -45,108 +55,167 @@ export default new Elysia()
 							sql`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`,
 						)[0] / 1024
 					} KB`,
-				)
+				);
 			},
 		}),
 	)
 	.use(
 		cron({
-			name: 'sync-pending-members',
+			name: "sync-pending-members",
 			pattern: Patterns.EVERY_5_MINUTES,
 			async run() {
-				console.log('try sync pending members')
-				await syncPendingMembers().catch((e) => console.error(e))
+				console.log("try sync pending members");
+				await syncPendingMembers().catch((e) => console.error(e));
 			},
 		}),
 	)
-	.get('/', async () => {
-		if (process.env.NODE_ENV === 'development') {
-			console.log('groups', await bot.listGroups())
-			await bot.send('5eb5b1fa27adc585a75cdedd6a1d4d5d', 'Hello').catch(console.error)
+	.get("/", async () => {
+		if (process.env.NODE_ENV === "development") {
+			console.log("groups", await bot.listGroups());
+			await bot
+				.send("5eb5b1fa27adc585a75cdedd6a1d4d5d", "Hello")
+				.catch(console.error);
 		}
 
-		return 'Onit XMTP bot 🤖'
+		return "Onit XMTP bot 🤖";
 	})
-	.group('/wallet/:address', { params: t.Object({ address: AddressLiteral }) }, (app) => {
-		return app.get('/', async ({ params: { address } }) => {
-			console.log('getting groups by address', address)
-			// - get the addresses safes
-			const safes = await getOwnersSafes(address)
+	.group(
+		"/wallet/:address",
+		{ params: t.Object({ address: AddressLiteral }) },
+		(app) => {
+			return app.get("/", async ({ params: { address } }) => {
+				console.log("getting groups by address", address);
+				// - get the addresses safes
+				const safes = await getOwnersSafes(address);
 
-			console.log('safes ->', safes)
+				console.log("safes ->", safes);
 
-			// - check for groups with the safe address
-			return (await getGroupsByWalletAddresses(safes)) || []
-		})
-	})
-	.group('/group/:groupId', (app) => {
+				// - check for groups with the safe address
+				return (await getGroupsByWalletAddresses(safes)) || [];
+			});
+		},
+	)
+	.group("/group/:groupId", (app) => {
 		return app
-			.get('/', async ({ params: { groupId } }) => {
-				if (!groupId) return 'Invalid group id'
-				return await getGroup(groupId)
+			.get("/", async ({ params: { groupId } }) => {
+				if (!groupId) return "Invalid group id";
+				return await getGroup(groupId);
 			})
-			.get('/members', async ({ params: { groupId } }) => {
-				if (!groupId) return 'Invalid group id'
-				return (await getGroup(groupId))?.pendingMembers || []
+			.get("/members", async ({ params: { groupId } }) => {
+				if (!groupId) return "Invalid group id";
+				return (await getGroup(groupId))?.pendingMembers || [];
 			})
 			.post(
-				'/members',
+				"/members",
 				async ({ params: { groupId }, body: { members, type } }) => {
-					const group = await getGroup(groupId)
-					if (!groupId || !group) return 'Invalid group id'
+					const group = await getGroup(groupId);
+					if (!groupId || !group) return "Invalid group id";
 					// - we only enable adding and removing members if a wallet is not already attached to the group
 					if (group.wallets.length)
-						return 'Members on group chat with wallets are managed by who is a signer on each of the wallet'
+						return "Members on group chat with wallets are managed by who is a signer on each of the wallet";
 
 					switch (type) {
-						case 'add':
-							return addMembers(groupId, members)
-						case 'remove':
-							return removeMembers(groupId, members)
+						case "add":
+							return addMembers(groupId, members);
+						case "remove":
+							return removeMembers(groupId, members);
 						default:
-							return 'Invalid type'
+							return "Invalid type";
 					}
 				},
 				{
 					body: t.Object({
 						members: t.Array(AddressLiteral),
-						type: t.Union([t.Literal('add'), t.Literal('remove')]),
+						type: t.Union([t.Literal("add"), t.Literal("remove")]),
 					}),
 				},
 			)
-			.get('/wallets', async ({ params: { groupId } }) => {
-				if (!groupId) return 'Invalid group id'
-				return (await getGroup(groupId))?.wallets || []
+			.get("/wallets", async ({ params: { groupId } }) => {
+				if (!groupId) return "Invalid group id";
+				return (await getGroup(groupId))?.wallets || [];
 			})
-			.post('/link-wallet', async ({ params: { groupId }, body }) => {
-				// TODO: check that each member is a member of the group
-				// TODO: if so then add the wallet to the group
-				// TODO: if not return an error
-				return 'Not implemented'
-			})
+			.group(
+				"/link-wallet",
+				{
+					params: t.Object({
+						chainAwareAddress: ChainAwareAddressLiteral,
+						groupId: t.String(),
+					}),
+				},
+				(app) => {
+					return app
+						.get(
+							"/:chainAwareAddress",
+							async ({ params: { groupId, chainAwareAddress } }) => {
+								return getLinkWalletEIP712TypedData(chainAwareAddress, groupId);
+							},
+						)
+						.post(
+							"/:chainAwareAddress",
+							async ({ params: { groupId, chainAwareAddress }, body }) => {
+								const group = await getGroup(groupId);
+
+								if (!group) throw new Error("Group not found");
+
+								const { signature } = body;
+
+								console.log("signature", signature);
+
+								const signTypedData = getLinkWalletEIP712TypedData(
+									chainAwareAddress,
+									groupId,
+								);
+
+								// TODO: check that each member is a member of the group
+								// TODO: if so then add the wallet to the group
+								// TODO: if not return an error
+								return await Promise.any(
+									group?.members.map(async (member) => {
+										return await verifyTypedData({
+											address: member.address,
+											...signTypedData,
+											// @ts-expect-error: still throws even after parsing
+											domain: TypedDataDomain.parse(signTypedData.domain),
+											signature,
+										});
+									}),
+								);
+							},
+							{
+								body: t.Object({ signature: HexLiteral }),
+							},
+						);
+				},
+			);
 	})
-	.group('/bot', (app) => {
+	.group("/bot", (app) => {
 		return app
-			.get('/sync-pending-members', async () => {
-				const pendingMembers = await syncPendingMembers()
-				return JSON.stringify(pendingMembers, null, 4)
+			.get("/sync-pending-members", async () => {
+				const pendingMembers = await syncPendingMembers();
+				return JSON.stringify(pendingMembers, null, 4);
 			})
 			.post(
-				'/create',
+				"/create",
 				async ({ body }) => {
-					const result = await createXmtpGroup(body)
+					const result = await createXmtpGroup(body);
 
-					const { groupId, members, pendingMembers, deployments } = result
+					const { groupId, members, pendingMembers, deployments } = result;
 
-					console.log('Created group', groupId, members, pendingMembers, deployments)
+					console.log(
+						"Created group",
+						groupId,
+						members,
+						pendingMembers,
+						deployments,
+					);
 
-					if (!groupId) return 'Failed to create group'
+					if (!groupId) return "Failed to create group";
 
-					return result
+					return result;
 				},
 				{ body: createXmtpGroupValidator },
-			)
+			);
 	})
 	.listen(8080, ({ hostname, port }) => {
-		console.log(`🦊 Elysia is running at http://${hostname}:${port}`)
-	})
+		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
+	});

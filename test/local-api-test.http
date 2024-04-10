@@ -19,7 +19,7 @@ POST http://localhost:8080/bot/create HTTP/1.1
 content-type: application/json
 
 {
-  "members": ["0xD452ba2fB26fB7b529178b3fa4B96b2719ca8D46"]
+  "members": ["0xDdD77754e23f2EA8bCd05D43C25084c6C81e82D8", "0xAF3fCab790DC38bCFcD6a19422c559d0aB57b29F"]
 }
 
 ###
@@ -66,3 +66,13 @@ GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.
 ###
 GET http://localhost:8080/0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad HTTP/1.1
 
+###
+GET http://localhost:8080/group/ed4ac987e6556dc8802bb7d0fce39d1d/link-wallet/basesep:0xaC03aD602D6786e7E87566192b48e30666e327Ad HTTP/1.1
+
+###
+POST http://localhost:8080/group/ed4ac987e6556dc8802bb7d0fce39d1d/link-wallet/basesep:0xaC03aD602D6786e7E87566192b48e30666e327Ad HTTP/1.1
+Content-Type: application/json
+
+{
+  "signature": "0x123"
+}

@@ -22,6 +22,7 @@ import { bot } from "./lib/xmtp/client";
 import { getLinkWalletEIP712TypedData } from "./lib/eth/link-wallet-sign-typed-data";
 import { verifyTypedData } from "viem";
 import { TypedDataDomain } from "abitype/zod";
+import syncGroupChatsWithSafeMembers from "./actions/sync-group-chats-with-safe-members";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -39,9 +40,6 @@ import { TypedDataDomain } from "abitype/zod";
  *
  * TODO: Add a method to link a deployed counterfactual account to the group chat
  * TODO: Add the ability for a member to remove themselves from a group chat
- * ! only run the next two methods if the group chat is a **deployed** safe
- * TODO: Add a job to periodically check for new members in a safe and add them to the group chat
- * TODO: Add a job to periodically check for removed members in a safe and remove them from the group chat
  */
 
 export default new Elysia()
@@ -62,10 +60,16 @@ export default new Elysia()
 	)
 	.use(
 		cron({
+			name: "sync-members-with-safes",
+			pattern: Patterns.everyMinutes(1),
+			run: syncGroupChatsWithSafeMembers,
+		}),
+	)
+	.use(
+		cron({
 			name: "sync-members-with-xmtp",
 			pattern: Patterns.EVERY_5_MINUTES,
 			async run() {
-				console.log("sync members with xmtp");
 				await syncStoredMembersWithXmtp().catch((e) => console.error(e));
 			},
 		}),

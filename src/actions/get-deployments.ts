@@ -11,7 +11,7 @@ export async function getDeployments({
 	address: Address | ChainAwareAddress;
 	type: "safe" | "party";
 }) {
-	let deployments: { address: ChainAwareAddress; members: Address[] }[] = [];
+	const deployments: { address: ChainAwareAddress; members: Address[] }[] = [];
 
 	switch (type) {
 		case "safe": {
@@ -37,6 +37,7 @@ export async function getDeployments({
 							await chain.safe?.api
 								.getSafeInfo(addressWithoutShortName)
 								.catch((e) => console.log("failed to get safe info ->", e)),
+							// biome-ignore lint/suspicious/noConfusingVoidType: this is the expected type
 						] satisfies [ChainWithSafe, SafeInfoResponse | undefined | void];
 					}),
 				),
@@ -56,7 +57,8 @@ export async function getDeployments({
 			break;
 		}
 		case "party":
-		// tODO: support party
+			// tODO: support party
+			break;
 		default:
 			break;
 	}

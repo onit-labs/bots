@@ -20,6 +20,7 @@ const { walletClient } = getWalletClient();
  * @param groupId Optionally provide a groupId to only sync members for that group
  */
 export async function syncStoredMembersWithXmtp(groupId?: string) {
+	console.log("sync members with xmtp");
 	const groupChats = await bot.listGroups().catch((e) => {
 		console.error("Failed to list groups", e);
 	});

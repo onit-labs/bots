@@ -106,6 +106,7 @@ async function extractDataFromOutput<T extends Record<string, unknown>>(
 	  } & T)
 	| undefined
 > {
+	console.log("command", command);
 	// @ts-expect-error
 	for await (const line of $({ raw: [command] }).lines()) {
 		try {

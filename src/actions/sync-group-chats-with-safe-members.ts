@@ -7,7 +7,6 @@ import * as schema from "../db/schema";
 import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
 import type { Address } from "viem";
 import { addMembers } from "./add-members";
-import { removeMembers } from "./remove-members";
 
 export default async function syncGroupChatsWithSafeMembers() {
 	console.log("syncing group chats with safe members");
@@ -129,29 +128,5 @@ export default async function syncGroupChatsWithSafeMembers() {
 
 		if (membersToAdd.length > 0)
 			await addMembers(groupChat.group_id, membersToAdd);
-
-		// 3. remove members from the group chat that are not multisig owners
-		const groupChatMembersThatAreNotOwners = groupChat.members.filter(
-			(member) => !owners.some((m) => m.toLowerCase() === member.toLowerCase()),
-		);
-
-		const databaseMembersThatAreNotOwners =
-			groupWallet.group?.members.filter(
-				(member) =>
-					!owners.some((m) =>
-						member.chainAwareAddress.toLowerCase().endsWith(m.toLowerCase()),
-					),
-			) ?? [];
-
-		const membersToRemove = [
-			...groupChatMembersThatAreNotOwners,
-			...databaseMembersThatAreNotOwners.map(
-				(m) => m.chainAwareAddress.split(":")[1] as Address,
-			),
-		];
-
-		console.log("membersToRemove -> ", membersToRemove);
-		if (membersToRemove.length > 0)
-			await removeMembers(groupChat.group_id, membersToRemove);
 	}
 }

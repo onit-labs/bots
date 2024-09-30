@@ -5,12 +5,7 @@ import {
 } from "./actions/create-xmtp-group";
 import { getGroup } from "./actions/get-group";
 import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
-import { retryPendingMembers } from "./actions/retry-pending-members";
-import {
-	AddressLiteral,
-	ChainAwareAddressLiteral,
-	HexLiteral,
-} from "./lib/validators";
+import { AddressLiteral } from "./lib/validators";
 import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
@@ -19,10 +14,6 @@ import { cron, Patterns } from "@elysiajs/cron";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { bot } from "./lib/xmtp/client";
-import { getLinkWalletEIP712TypedData } from "./lib/eth/link-wallet-sign-typed-data";
-import { verifyTypedData } from "viem";
-import { TypedDataDomain } from "abitype/zod";
-import syncGroupChatsWithSafeMembers from "./actions/sync-group-chats-with-safe-members";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -58,32 +49,6 @@ export default new Elysia()
 			},
 		}),
 	)
-	.use(
-		cron({
-			name: "sync-members-with-safes",
-			pattern: Patterns.everyMinutes(1),
-			run: syncGroupChatsWithSafeMembers,
-		}),
-	)
-	.use(
-		cron({
-			name: "sync-members-with-xmtp",
-			pattern: Patterns.EVERY_5_MINUTES,
-			async run() {
-				await syncStoredMembersWithXmtp().catch((e) => console.error(e));
-			},
-		}),
-	)
-	.use(
-		cron({
-			name: "retry-add-pending-members",
-			pattern: Patterns.EVERY_5_MINUTES,
-			async run() {
-				console.log("retry add pending members");
-				await retryPendingMembers().catch((e) => console.error(e));
-			},
-		}),
-	)
 	.get("/", async () => {
 		if (process.env.NODE_ENV === "development") {
 			console.log("groups", await bot.listGroups());
@@ -113,10 +78,6 @@ export default new Elysia()
 				if (!groupId) return "Invalid group id";
 				return await getGroup(groupId);
 			})
-			.get("/members", async ({ params: { groupId } }) => {
-				if (!groupId) return "Invalid group id";
-				return (await getGroup(groupId))?.members || [];
-			})
 			.post(
 				"/members",
 				async ({ params: { groupId }, body: { members, type } }) => {
@@ -145,60 +106,7 @@ export default new Elysia()
 			.get("/wallets", async ({ params: { groupId } }) => {
 				if (!groupId) return "Invalid group id";
 				return (await getGroup(groupId))?.wallets || [];
-			})
-			.group(
-				"/link-wallet",
-				{
-					params: t.Object({
-						chainAwareAddress: ChainAwareAddressLiteral,
-						groupId: t.String(),
-					}),
-				},
-				(app) => {
-					return app
-						.get(
-							"/:chainAwareAddress",
-							async ({ params: { groupId, chainAwareAddress } }) => {
-								return getLinkWalletEIP712TypedData(chainAwareAddress, groupId);
-							},
-						)
-						.post(
-							"/:chainAwareAddress",
-							async ({ params: { groupId, chainAwareAddress }, body }) => {
-								const group = await getGroup(groupId);
-
-								if (!group) throw new Error("Group not found");
-
-								const { signature } = body;
-
-								console.log("signature", signature);
-
-								const signTypedData = getLinkWalletEIP712TypedData(
-									chainAwareAddress,
-									groupId,
-								);
-
-								// TODO: check that each member is a member of the group
-								// TODO: if so then add the wallet to the group
-								// TODO: if not return an error
-								return await Promise.any(
-									group?.members.map(async (member) => {
-										return await verifyTypedData({
-											address: member.address,
-											...signTypedData,
-											// @ts-expect-error: still throws even after parsing
-											domain: TypedDataDomain.parse(signTypedData.domain),
-											signature,
-										});
-									}),
-								);
-							},
-							{
-								body: t.Object({ signature: HexLiteral }),
-							},
-						);
-				},
-			);
+			});
 	})
 	.group("/bot", (app) => {
 		return app
@@ -207,16 +115,6 @@ export default new Elysia()
 				async ({ query: { groupId } }) => {
 					const members = await syncStoredMembersWithXmtp(groupId);
 					return JSON.stringify(members, null, 4);
-				},
-				{
-					query: t.Object({ groupId: t.Optional(t.String()) }),
-				},
-			)
-			.get(
-				"/retry-pending-members",
-				async ({ query: { groupId } }) => {
-					const pendingMembers = await retryPendingMembers(groupId);
-					return JSON.stringify(pendingMembers, null, 4);
 				},
 				{
 					query: t.Object({ groupId: t.Optional(t.String()) }),

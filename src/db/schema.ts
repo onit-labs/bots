@@ -1,23 +1,34 @@
-import { sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import {
 	relations,
 	type InferInsertModel,
 	type InferSelectModel,
 } from "drizzle-orm";
-import { generateUuid7 } from "../lib/uuid";
-import type { Uuidv7 } from "../lib/validators";
 import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
 import type { Address } from "viem";
+import type { ValueOf } from "type-fest";
 
 export type ChainAwareAddress =
 	| `${ChainShortName}:${Address}`
 	| `${string}:${Address}`;
 
+export type WalletAddress = Address | ChainAwareAddress;
+
 const idField = {
-	id: text("id")
-		.$type<Uuidv7>()
-		.$default(() => generateUuid7()),
+	id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
 };
+
+const GroupMemberStatus = {
+	PENDING: "PENDING",
+	APPROVED: "APPROVED",
+	REJECTED: "REJECTED",
+} as const;
+
+const GroupMemberStatuses = [
+	"PENDING",
+	"APPROVED",
+	"REJECTED",
+] as const satisfies Array<ValueOf<typeof GroupMemberStatus>>;
 
 /**
  * - Tables
@@ -31,7 +42,7 @@ export const groupWallets = sqliteTable("group_wallets", {
 	...idField,
 	type: text("type", { enum: ["safe", "party"] }).notNull(),
 	groupId: text("group_id").references(() => groups.id),
-	walletAddress: text("wallet_address").$type<ChainAwareAddress>().notNull(),
+	walletAddress: text("wallet_address").$type<WalletAddress>().notNull(),
 });
 
 export const groupMembers = sqliteTable(
@@ -39,13 +50,22 @@ export const groupMembers = sqliteTable(
 	{
 		...idField,
 		groupId: text("group_id").references(() => groups.id),
-		chainAwareAddress: text("address").$type<ChainAwareAddress>().notNull(),
-		status: text("status", {
-			enum: ["pending", "approved", "rejected"],
-		}).notNull(),
+		inboxId: text("inbox_id").notNull(),
+		status: text("status", { enum: GroupMemberStatuses }).notNull(),
 	},
 	(fields) => ({
-		uniqueMember: unique().on(fields.chainAwareAddress, fields.groupId),
+		uniqueMember: unique().on(fields.inboxId, fields.groupId),
+	}),
+);
+
+export const inboxIds = sqliteTable(
+	"inbox_ids",
+	{
+		inboxId: text("inbox_id").notNull(),
+		address: text("address").$type<WalletAddress>().notNull(),
+	},
+	(fields) => ({
+		uniqueInbox: unique().on(fields.inboxId, fields.address),
 	}),
 );
 
@@ -85,3 +105,6 @@ export type InsertGroupMember = InferInsertModel<typeof groupMembers>;
 
 export type GroupWallet = InferSelectModel<typeof groupWallets>;
 export type InsertGroupWallet = InferInsertModel<typeof groupWallets>;
+
+export type InboxId = InferSelectModel<typeof inboxIds>;
+export type InsertInboxId = InferInsertModel<typeof inboxIds>;

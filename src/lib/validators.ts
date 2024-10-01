@@ -13,7 +13,7 @@ export const ChainAwareAddressLiteral = t.TemplateLiteral(
 	"${string}:0x${string}",
 );
 
-export const AddressOrChainAwareAddress = t.Union([
+export const WalletAddressLiteral = t.Union([
 	AddressLiteral,
 	ChainAwareAddressLiteral,
 ]);

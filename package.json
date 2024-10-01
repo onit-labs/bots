@@ -16,23 +16,20 @@
     "@biomejs/biome": "1.6.3",
     "@types/bun": "latest",
     "bun-types": "latest",
-    "drizzle-kit": "^0.20.14",
-    "type-fest": "^4.14.0",
-    "typescript": "^5.6.0"
+    "drizzle-kit": "^0.20.18",
+    "type-fest": "^4.26.1",
+    "typescript": "^5.6.2"
   },
   "dependencies": {
-    "@elysiajs/bearer": "^1.1.2",
-    "@elysiajs/cron": "^1.0.3",
-    "@elysiajs/jwt": "^1.1.1",
-    "@safe-global/api-kit": "^2.2.0",
-    "@xmtp/grpc-api-client": "^0.2.4",
+    "@elysiajs/cron": "^1.1.1",
+    "@safe-global/api-kit": "^2.4.6",
+    "@xmtp/grpc-api-client": "^0.2.7",
     "@xmtp/mls-client": "^0.0.15",
-    "@xmtp/xmtp-js": "^11.5.0",
-    "drizzle-orm": "^0.30.6",
-    "elysia": "^1.0.11",
-    "remeda": "^1.57.0",
-    "uuidv7": "^0.6.3",
-    "viem": "^2.9.5",
-    "zod": "^3.22.4"
+    "@xmtp/xmtp-js": "^11.6.3",
+    "drizzle-orm": "^0.30.10",
+    "elysia": "^1.1.17",
+    "remeda": "^1.61.0",
+    "viem": "^2.21.16",
+    "zod": "^3.23.8"
   }
 }

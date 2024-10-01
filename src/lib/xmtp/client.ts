@@ -13,18 +13,19 @@ if (!env || !encryptionKey || !mnemonic) {
 	throw new Error("XMTP_ENV or ENCRYPTION_KEY is not set");
 }
 
-const dbPath = `./data/${env}`;
+const account = mnemonicToAccount(mnemonic);
+
+const dbPath = `./data/${env}-${account.address}.db`;
 
 if (!fs.existsSync(dbPath)) {
 	fs.mkdirSync(dbPath);
 }
 
-const account = mnemonicToAccount(mnemonic);
-
 export const client = await Client.create(account.address, {
-	env: env,
+	env,
 	dbPath,
 	codecs: [new TextCodec()],
+	encryptionKey: toBytes(encryptionKey).slice(0, 32),
 });
 
 console.log("XMTP Client: ", {

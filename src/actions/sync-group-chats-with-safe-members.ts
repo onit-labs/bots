@@ -1,7 +1,7 @@
 import * as R from "remeda";
 import { db } from "../db";
 import { inArray, sql } from "drizzle-orm";
-import { bot } from "../lib/xmtp/client";
+import { client } from "../lib/xmtp/client";
 import { getDeployments } from "./get-deployments";
 import * as schema from "../db/schema";
 import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
@@ -11,7 +11,7 @@ import { addMembers } from "./add-members";
 export default async function syncGroupChatsWithSafeMembers() {
 	console.log("syncing group chats with safe members");
 	// - get the current group chats from XMTP
-	const groupChats = await bot.listGroups().catch((e) => {});
+	const groupChats = await client.conversations.list();
 
 	console.log("groupChats", groupChats);
 
@@ -23,7 +23,7 @@ export default async function syncGroupChatsWithSafeMembers() {
 		where(fields, { inArray }) {
 			return inArray(
 				fields.groupId,
-				groupChats.map((group) => group.group_id),
+				groupChats.map((group) => group.id),
 			);
 		},
 	});
@@ -33,7 +33,7 @@ export default async function syncGroupChatsWithSafeMembers() {
 	// - iterate over each groups wallet deployments & ensure the members in the chat are the union of the wallet owners
 	for (const groupWallet of groupWallets) {
 		const groupChat = groupChats.find(
-			(group) => group.group_id === groupWallet.groupId,
+			(group) => group.id === groupWallet.groupId,
 		);
 
 		if (!groupChat) continue;
@@ -94,14 +94,14 @@ export default async function syncGroupChatsWithSafeMembers() {
 
 		// 1. ensure that all multisig owners that are in the group chat are approved in the database
 		const unapprovedOwners = ownersThatAreMembersOfTheChat.filter(
-			({ status }) => !!status && status !== "approved",
+			({ status }) => !!status && status !== "APPROVED",
 			// ! filter types suck here
-		) as Array<{ status: "pending" | "rejected"; address: Address }>;
+		) as Array<{ status: "PENDING" | "REJECTED"; address: Address }>;
 
 		if (unapprovedOwners.length > 0)
 			await db
 				.update(schema.groupMembers)
-				.set({ status: "approved" })
+				.set({ status: "APPROVED" })
 				.where(
 					sql.join([
 						inArray(
@@ -126,7 +126,6 @@ export default async function syncGroupChatsWithSafeMembers() {
 			membersToAdd,
 		);
 
-		if (membersToAdd.length > 0)
-			await addMembers(groupChat.group_id, membersToAdd);
+		if (membersToAdd.length > 0) await addMembers(groupChat.id, membersToAdd);
 	}
 }

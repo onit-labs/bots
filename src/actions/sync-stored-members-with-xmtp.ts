@@ -2,7 +2,7 @@ import * as R from "remeda";
 import { and, eq, inArray } from "drizzle-orm";
 import * as schema from "../db/schema";
 import { db } from "../db";
-import { bot } from "../lib/xmtp/client";
+import { client } from "../lib/xmtp/client";
 import type { ChainAwareAddress } from "../db/schema";
 import { getWalletClient } from "../lib/eth/clients";
 
@@ -21,14 +21,10 @@ const { walletClient } = getWalletClient();
  */
 export async function syncStoredMembersWithXmtp(groupId?: string) {
 	console.log("sync members with xmtp");
-	const groupChats = await bot.listGroups().catch((e) => {
-		console.error("Failed to list groups", e);
-	});
+	const groupChats = await client.conversations.list();
 
 	console.log("groupChats", groupChats);
-	if (!groupChats) {
-		return;
-	}
+	if (!groupChats) return;
 
 	// - ensure that the database member status is approved if the user is in the group on XMTP
 	const membersFromDatabase = await db.query.groupMembers.findMany({
@@ -64,7 +60,7 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 				return "unsupported";
 			}
 
-			return !membersFromDatabase.some((m) => m.groupId === group.group_id)
+			return !membersFromDatabase.some((m) => m.groupId === group.id)
 				? "missing"
 				: "stored";
 		}),
@@ -75,7 +71,7 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 
 	// - find the set of missing groups and store them in the database
 	for (const missingGroupId of R.unique(
-		(missingGroups ?? []).map((group) => group.group_id),
+		(missingGroups ?? []).map((group) => group.id),
 	)) {
 		await db.insert(schema.groups).values({ id: missingGroupId });
 	}
@@ -84,7 +80,7 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 		missingGroups ?? [],
 		R.flatMap((group) =>
 			group.members.map((address) => ({
-				groupId: group.group_id,
+				groupId: group.id,
 				address,
 			})),
 		),
@@ -108,12 +104,12 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 			group.members.map((address) => {
 				const member = membersFromDatabase.find(
 					(m) =>
-						m.groupId === group.group_id &&
+						m.groupId === group.id &&
 						m.chainAwareAddress.toLowerCase().endsWith(address.toLowerCase()),
 				);
 				const { status, chainAwareAddress } = member ?? {};
 				return {
-					groupId: group.group_id,
+					groupId: group.id,
 					address,
 					// biome-ignore lint/style/noNonNullAssertion: we filtered on these members to get here
 					chainAwareAddress: chainAwareAddress!,
@@ -132,14 +128,14 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 
 		// - if the user is in the group chat but is not approved then approve them
 		switch (storedMember.status) {
-			case "approved": {
+			case "APPROVED": {
 				// - do nothing they are already approved
 				continue;
 			}
 			default:
 				await db
 					.update(schema.groupMembers)
-					.set({ status: "approved" as const })
+					.set({ status: "APPROVED" as const })
 					.where(
 						and(
 							eq(schema.groupMembers.groupId, storedMember.groupId),
@@ -159,7 +155,7 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 			R.filter((m) => {
 				// - if the user is in the chat then we don't want to revert them to pending
 				const groupChat = groupChats.find(
-					({ group_id: id, members }) =>
+					({ id, members }) =>
 						id === m.groupId &&
 						members.some((address) =>
 							m.chainAwareAddress.toLowerCase().endsWith(address.toLowerCase()),
@@ -172,7 +168,7 @@ export async function syncStoredMembersWithXmtp(groupId?: string) {
 
 		await db
 			.update(schema.groupMembers)
-			.set({ status: "pending" as const })
+			.set({ status: "PENDING" as const })
 			.where(
 				inArray(
 					schema.groupMembers.id,

@@ -1,36 +1,41 @@
 import { Elysia, t } from "elysia";
-import {
-	createXmtpGroup,
-	createXmtpGroupValidator,
-} from "./actions/create-xmtp-group";
 import { getGroup } from "./actions/get-group";
 import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
 import { AddressLiteral } from "./lib/validators";
 import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
-import { removeMembers } from "./actions/remove-members";
 import { cron, Patterns } from "@elysiajs/cron";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
-import { bot } from "./lib/xmtp/client";
+import { client } from "./lib/xmtp/client";
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
  *
- * We first have a method to allow a xmtp group chat to be created with a list of members.
- *
- * Then we have a method to check for pending members (members that failed to be added to the group chat i.e. are not
- * yet on XMTP v3). This method will be used to retry adding the members to the group chat and is run on a schedule.
+ * We check for pending members (members that failed to be added to the group chat i.e. are not yet on XMTP v3).
+ * This method will be used to retry adding the members to the group chat and is run on a schedule.
  *
  * Finally we have another method that periodically checks for new members in a safe and adds them to the group chat.
- * Or removes members from the group chat if they are no longer in the safe.
  *
  * **NOTE:** This service only handles updating the members of **deployed** safe accounts. If the account is counterfactual
  * another call will have to be made to the service once the account is deployed.
+ */
+
+/**
+ * - TODO
+ * - add a method to link a deployed counterfactual account to the group chat
+ * - add the ability for a member to remove themselves from a group chat
  *
- * TODO: Add a method to link a deployed counterfactual account to the group chat
- * TODO: Add the ability for a member to remove themselves from a group chat
+ * For the V2 version we need the bot to:
+ * - keep track of the groups it is in
+ * - keep track of the members of each group
+ * - handle the addition of new members to a group
+ * - track wallets that are attached to a group
+ * - periodically check for new members in a safe and add them to the group chat
+ *
+ * To do this we need to:
+ * - track the messages in the group chat that are 'system' messages, i.e. attachWallet, addMember, removeMember, etc
  */
 
 export default new Elysia()
@@ -51,7 +56,8 @@ export default new Elysia()
 	)
 	.get("/", async () => {
 		if (process.env.NODE_ENV === "development") {
-			console.log("groups", await bot.listGroups());
+			const conversations = await client.conversations.list();
+			console.log("groups", conversations);
 		}
 
 		return "Onit XMTP bot 🤖";
@@ -73,68 +79,41 @@ export default new Elysia()
 		},
 	)
 	.group("/group/:groupId", (app) => {
-		return app
-			.get("/", async ({ params: { groupId } }) => {
-				if (!groupId) return "Invalid group id";
-				return await getGroup(groupId);
-			})
-			.post(
-				"/members",
-				async ({ params: { groupId }, body: { members, type } }) => {
-					const group = await getGroup(groupId);
-					if (!groupId || !group) return "Invalid group id";
-					// - we only enable adding and removing members if a wallet is not already attached to the group
-					if (group.wallets.length)
-						return "Members on group chat with wallets are managed by who is a signer on each of the wallet";
+		return app.post(
+			"/members",
+			async ({ params: { groupId }, body: { members, type } }) => {
+				const group = await getGroup(groupId);
+				if (!groupId || !group) return "Invalid group id";
+				// - we only enable adding and removing members if a wallet is not already attached to the group
+				if (group.wallets.length)
+					return "Members on group chat with wallets are managed by who is a signer on each of the wallet";
 
-					switch (type) {
-						case "add":
-							return addMembers(groupId, members);
-						case "remove":
-							return removeMembers(groupId, members);
-						default:
-							return "Invalid type";
-					}
-				},
-				{
-					body: t.Object({
-						members: t.Array(AddressLiteral),
-						type: t.Union([t.Literal("add"), t.Literal("remove")]),
-					}),
-				},
-			)
-			.get("/wallets", async ({ params: { groupId } }) => {
-				if (!groupId) return "Invalid group id";
-				return (await getGroup(groupId))?.wallets || [];
-			});
+				switch (type) {
+					case "add":
+						return addMembers(groupId, members);
+					default:
+						return "Invalid type";
+				}
+			},
+			{
+				body: t.Object({
+					members: t.Array(AddressLiteral),
+					type: t.Union([t.Literal("add"), t.Literal("remove")]),
+				}),
+			},
+		);
 	})
 	.group("/bot", (app) => {
-		return app
-			.get(
-				"/sync-members",
-				async ({ query: { groupId } }) => {
-					const members = await syncStoredMembersWithXmtp(groupId);
-					return JSON.stringify(members, null, 4);
-				},
-				{
-					query: t.Object({ groupId: t.Optional(t.String()) }),
-				},
-			)
-			.post(
-				"/create",
-				async ({ body }) => {
-					const result = await createXmtpGroup(body);
-
-					const { groupId, members, deployments } = result;
-
-					console.log("Created group", groupId, members, deployments);
-
-					if (!groupId) return "Failed to create group";
-
-					return result;
-				},
-				{ body: createXmtpGroupValidator },
-			);
+		return app.get(
+			"/sync-members",
+			async ({ query: { groupId } }) => {
+				const members = await syncStoredMembersWithXmtp(groupId);
+				return JSON.stringify(members, null, 4);
+			},
+			{
+				query: t.Object({ groupId: t.Optional(t.String()) }),
+			},
+		);
 	})
 	.listen(8080, ({ hostname, port }) => {
 		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);

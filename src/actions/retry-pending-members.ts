@@ -2,7 +2,7 @@ import * as R from "remeda";
 import { and, eq } from "drizzle-orm";
 import * as schema from "../db/schema";
 import { db } from "../db";
-import { bot } from "../lib/xmtp/client";
+import { client } from "../lib/xmtp/client";
 import type { GroupMember, GroupMemberStatus } from "../db/schema";
 
 export async function retryPendingMembers(groupId?: string) {
@@ -10,8 +10,8 @@ export async function retryPendingMembers(groupId?: string) {
 	const pendingMembers = await db.query.groupMembers.findMany({
 		where: (fields, { eq }) =>
 			groupId
-				? and(eq(fields.groupId, groupId), eq(fields.status, "pending"))
-				: eq(fields.status, "pending"),
+				? and(eq(fields.groupId, groupId), eq(fields.status, "PENDING"))
+				: eq(fields.status, "PENDING"),
 	});
 
 	const batchedPromises = R.chunk(pendingMembers.map(retryAddMember), 10);
@@ -35,17 +35,20 @@ async function retryAddMember({
 
 	try {
 		console.log(`adding ${address} to group ${groupId}`);
-		await bot.addMembers(groupId, [address]);
+		const conversation =
+			await client.conversations.getConversationById(groupId);
+		if (!conversation) throw new Error("Conversation not found");
+		await conversation.addMembers([address]);
 		await db
 			.update(schema.groupMembers)
-			.set({ status: "approved" as const })
+			.set({ status: "APPROVED" as const })
 			.where(
 				and(
 					eq(schema.groupMembers.id, id),
 					eq(schema.groupMembers.chainAwareAddress, chainAwareAddress),
 				),
 			);
-		return "approved";
+		return "APPROVED";
 	} catch (e) {
 		console.error(`failed to add ${address} to group ${groupId}`);
 		// - no need to update the status as we will retry this on the next run

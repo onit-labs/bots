@@ -9,7 +9,7 @@ import { cron, Patterns } from "@elysiajs/cron";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { client } from "./lib/xmtp/client";
-import { authService } from "./services/auth";
+import { getAuthedUser } from "./services/auth";
 import { isChainAwareAddress } from "./utils/is-chain-aware-address";
 
 if (!process.env.JWT_SECRET) {
@@ -44,7 +44,7 @@ if (!process.env.JWT_SECRET) {
  * - track the messages in the group chat that are 'system' messages, i.e. attachWallet, addMember, removeMember, etc
  */
 
-export default new Elysia()
+export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 	.use(
 		cron({
 			name: "heartbeat",
@@ -74,30 +74,30 @@ export default new Elysia()
 			params: t.Object({ address: WalletAddressLiteral }),
 		},
 		(app) => {
-			return (
-				app
-					// .use(authService)
-					.get(
-						"/",
-						async ({ params: { address } }) => {
-							console.log("getting groups by address", address);
+			return app.use(getAuthedUser).get(
+				"/",
+				async ({ params: { address }, user }) => {
+					console.log(
+						"getting groups by address",
+						address,
+						JSON.stringify(user, null, 2),
+					);
 
-							// TODO: handle chain aware addresses
-							if (isChainAwareAddress(address)) {
-								throw new Error("Chain aware addresses are not supported yet");
-							}
+					// TODO: handle chain aware addresses
+					if (isChainAwareAddress(address)) {
+						throw new Error("Chain aware addresses are not supported yet");
+					}
 
-							const safes = await getOwnersSafes(address);
+					const safes = await getOwnersSafes(address);
 
-							console.log("safes ->", safes);
+					console.log("safes ->", safes);
 
-							// - check for groups with the safe address
-							return (await getGroupsByWalletAddresses(safes)) || [];
-						},
-						// {
-						// 	requiresAuthentication: true,
-						// },
-					)
+					// - check for groups with the safe address
+					return (await getGroupsByWalletAddresses(safes)) || [];
+				},
+				{
+					requiresAuthentication: true,
+				},
 			);
 		},
 	)
@@ -137,7 +137,7 @@ export default new Elysia()
 				query: t.Object({ groupId: t.Optional(t.String()) }),
 			},
 		);
-	})
-	.listen(process.env.PORT ?? 8080, ({ hostname, port }) => {
-		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
 	});
+// .listen(PORT, ({ hostname, port }) => {
+// 	console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
+// });

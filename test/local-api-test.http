@@ -2,13 +2,13 @@
 @port = 8080
 @host = {{hostname}}:{{port}}
 @contentType = application/json
-@token = {{$processEnv TOKEN}}
+@token = {{$dotenv TOKEN}}
 
 @testWalletAddress = 0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad
 
 ###
 GET {{host}}/wallet/{{testWalletAddress}} HTTP/1.1
-
+Authorization: Bearer {{token}}
 
 ###
 GET {{host}}/group/ec3fe61731df69f89bdb973c2bbe3199 HTTP/1.1

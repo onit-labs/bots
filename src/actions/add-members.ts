@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import type { Address } from "@/db/schema";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import type { WalletAddress } from "@/db/schema";
@@ -7,7 +7,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import {
 	getInboxIdByAddress,
 	getDefaultInboxId,
-} from "@/utils/get-inbox-id-by-address";
+} from "@/lib/get-inbox-id-by-address";
 
 /**
  * Add members to a group chat
@@ -27,7 +27,8 @@ export async function addMembers(
 	const canMessageMembers = await client.canMessage(members);
 
 	const inboxesToStore: Array<schema.InsertInboxId> = [];
-	for await (const [address, canMessage] of Object.entries(canMessageMembers)) {
+	for await (const [key, canMessage] of Object.entries(canMessageMembers)) {
+		const address = key as Address;
 		let inboxId = await getInboxIdByAddress(address);
 		const isXmtpV3Enabled = !!inboxId;
 		inboxId ||= getDefaultInboxId(address);

@@ -11,8 +11,9 @@ import {
 	type InferSelectModel,
 } from "drizzle-orm";
 import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
-import type { Address, Hex } from "viem";
+import type { Hex } from "viem";
 
+export type Address = `0x${string}`;
 export type ChainAwareAddress =
 	| `${ChainShortName}:${Address}`
 	| `${string}:${Address}`;

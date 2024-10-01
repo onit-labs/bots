@@ -1,6 +1,6 @@
-import type { Address } from "viem";
+import type { Address } from "@/db/schema";
 import { sha256 } from "viem";
-import { client } from "../lib/xmtp/client";
+import { client } from "./xmtp/client";
 
 export function getDefaultInboxId(address: Address): string {
 	return sha256(`${address.toLowerCase()}0` as `0x${string}`).slice(2);

@@ -12,6 +12,7 @@ import {
 } from "./content-types/link-wallet";
 import { storeGroupWallets } from "@/actions/store-group-wallets";
 import { db } from "@/db";
+import { storeExistingMembers } from "@/actions/store-existing-member";
 
 export async function setupListeners() {
 	console.log("Setting up listeners");
@@ -71,8 +72,10 @@ async function fullResync(shouldSync = false) {
 	const groups = await client.conversations.list();
 
 	await Promise.all(
-		groups.map(async (group) => {
+		groups.map((group) => {
+			const promises: Array<Promise<void>> = [];
 			const messages = group.messages();
+
 			const linkedWalletsToStore = messages
 				.filter((msg) => isLinkGroupWalletMessage(msg))
 				.map((msg) => {
@@ -81,7 +84,12 @@ async function fullResync(shouldSync = false) {
 				});
 
 			if (linkedWalletsToStore.length > 0)
-				await storeGroupWallets(linkedWalletsToStore);
+				promises.push(storeGroupWallets(linkedWalletsToStore));
+
+			const members = group.members;
+
+			if (members.length > 0)
+				promises.push(storeExistingMembers([{ members, groupId: group.id }]));
 		}),
 	);
 }

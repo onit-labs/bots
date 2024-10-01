@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import type { Address } from "@/db/schema";
 import { db } from "../db";
 import type { ChainAwareAddress } from "../db/schema";
 import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";

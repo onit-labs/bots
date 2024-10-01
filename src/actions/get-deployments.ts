@@ -1,5 +1,5 @@
 import * as R from "remeda";
-import type { Address } from "viem";
+import type { Address } from "@/db/schema";
 import { chainsByChainId, type ChainWithSafe } from "../lib/eth/setup-chains";
 import type { ChainAwareAddress } from "../db/schema";
 import type { SafeInfoResponse } from "@safe-global/api-kit";

@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { client } from "@/lib/xmtp/client";
 import { getAuthedUser } from "@/services/auth";
-import { isChainAwareAddress } from "@/utils/is-chain-aware-address";
+import { isChainAwareAddress } from "@/lib/chain";
 import { setupListeners } from "./lib/xmtp/setup-listeners";
 
 if (!process.env.JWT_SECRET) {

@@ -157,5 +157,21 @@ export const chainShortNames = {
 	11297108109: "palm",
 } as const;
 
-export type ChainShortName =
-	(typeof chainShortNames)[keyof typeof chainShortNames];
+export type SupportedChainId = keyof typeof chainShortNames;
+export type ChainShortName = (typeof chainShortNames)[SupportedChainId];
+
+export function getChainShortName(chainId: number): ChainShortName | undefined {
+	return chainId in chainShortNames
+		? chainShortNames[chainId as keyof typeof chainShortNames]
+		: undefined;
+}
+
+export function getChainId(
+	chainShortName: ChainShortName & (string & {}),
+): SupportedChainId | undefined {
+	return Object.keys(chainShortNames).find(
+		(key) =>
+			chainShortNames[key as unknown as keyof typeof chainShortNames] ===
+			chainShortName,
+	) as SupportedChainId | undefined;
+}

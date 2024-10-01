@@ -1,8 +1,8 @@
 import * as R from "remeda";
-import type { ChainAwareAddress } from "../../../db/schema";
+import type { Address, ChainAwareAddress } from "@/db/schema";
 import { safeAbi } from "../abis/safe";
 import { chainsByChainId } from "../setup-chains";
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, http } from "viem";
 
 export const getSafeOwners = async (safeAddress: ChainAwareAddress) => {
 	const [shortName, address] = safeAddress.split(":") as [

@@ -5,7 +5,7 @@ import { client } from "../lib/xmtp/client";
 import { getDeployments } from "./get-deployments";
 import * as schema from "../db/schema";
 import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
-import type { Address } from "viem";
+import type { Address } from "@/db/schema";
 import { addMembers } from "./add-members";
 
 export default async function syncGroupChatsWithSafeMembers() {

@@ -1,11 +1,3 @@
 {
-	"files.associations": {
-		"partykit.json": "jsonc"
-	},
-	"json.schemas": [
-		{
-			"fileMatch": ["partykit.json"],
-			"url": "https://www.partykit.io/schema.json"
-		}
-	]
+	"typescript.tsdk": "node_modules/typescript/lib"
 }

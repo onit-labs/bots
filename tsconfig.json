@@ -1,7 +1,9 @@
 {
 	"compilerOptions": {
 		// Enable latest features
-		"lib": ["ESNext"],
+		"lib": [
+			"ESNext"
+		],
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleDetection": "force",
@@ -18,7 +20,19 @@
 		"noFallthroughCasesInSwitch": true,
 		// Some stricter flags
 		"noUnusedLocals": true,
-		"noUnusedParameters": true
+		"noUnusedParameters": true,
 		// "noPropertyAccessFromIndexSignature": true
-	}
+		"paths": {
+			"@/*": [
+				"./src/*"
+			]
+		}
+	},
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

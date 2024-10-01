@@ -23,6 +23,10 @@
   "dependencies": {
     "@elysiajs/cron": "^1.1.1",
     "@safe-global/api-kit": "^2.4.6",
+    "@xmtp/content-type-reaction": "^1.1.9",
+    "@xmtp/content-type-read-receipt": "^1.1.10",
+    "@xmtp/content-type-remote-attachment": "^1.1.9",
+    "@xmtp/content-type-reply": "^1.1.11",
     "@xmtp/grpc-api-client": "^0.2.7",
     "@xmtp/mls-client": "^0.0.15",
     "@xmtp/xmtp-js": "^11.6.3",

@@ -1,16 +1,16 @@
 import { Elysia, t } from "elysia";
-import { getGroup } from "./actions/get-group";
-import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
-import { AddressLiteral, WalletAddressLiteral } from "./lib/validators";
-import { getOwnersSafes } from "./actions/get-owners-safes";
-import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
-import { addMembers } from "./actions/add-members";
+import { syncStoredMembersWithXmtp } from "@/actions/sync-stored-members-with-xmtp";
+import { WalletAddressLiteral } from "@/lib/validators";
+import { getOwnersSafes } from "@/actions/get-owners-safes";
+import { getGroupsByWalletAddresses } from "@/actions/get-group-by-wallet-address";
+import { addMembers } from "@/actions/add-members";
 import { cron, Patterns } from "@elysiajs/cron";
-import { db } from "./db";
+import { db } from "@/db";
 import { sql } from "drizzle-orm";
-import { client } from "./lib/xmtp/client";
-import { getAuthedUser } from "./services/auth";
-import { isChainAwareAddress } from "./utils/is-chain-aware-address";
+import { client } from "@/lib/xmtp/client";
+import { getAuthedUser } from "@/services/auth";
+import { isChainAwareAddress } from "@/utils/is-chain-aware-address";
+import { setupListeners } from "./lib/xmtp/setup-listeners";
 
 if (!process.env.JWT_SECRET) {
 	throw new Error("JWT_SECRET is not set");
@@ -50,6 +50,12 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 			name: "heartbeat",
 			pattern: Patterns.EVERY_10_SECONDS,
 			run() {
+				db.query.groups
+					.findMany()
+					.then((groups) => console.log("groups -> ", groups));
+				db.query.groupWallets
+					.findMany()
+					.then((wallets) => console.log("group wallets -> ", wallets));
 				console.log(
 					`app.db size -> ${
 						db.get<[number]>(
@@ -60,28 +66,23 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 			},
 		}),
 	)
-	.get("/", async () => {
-		if (process.env.NODE_ENV === "development") {
-			const conversations = await client.conversations.list();
-			console.log("groups", conversations);
-		}
-
-		return "Onit XMTP bot 🤖";
-	})
+	.get("/", async () => "Onit XMTP bot 🤖")
 	.group(
 		"/wallet/:address",
-		{
-			params: t.Object({ address: WalletAddressLiteral }),
-		},
+		{ params: t.Object({ address: WalletAddressLiteral }) },
 		(app) => {
 			return app.use(getAuthedUser).get(
 				"/",
 				async ({ params: { address }, user }) => {
-					console.log(
-						"getting groups by address",
-						address,
-						JSON.stringify(user, null, 2),
-					);
+					console.log("user ->", user);
+
+					if (
+						!user.ethAccounts.some(
+							(account) =>
+								account.address.toLowerCase() === address.toLowerCase(),
+						)
+					)
+						return new Response(null, { status: 401 });
 
 					// TODO: handle chain aware addresses
 					if (isChainAwareAddress(address)) {
@@ -95,21 +96,27 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 					// - check for groups with the safe address
 					return (await getGroupsByWalletAddresses(safes)) || [];
 				},
-				{
-					requiresAuthentication: true,
-				},
+				{ requiresAuthentication: true },
 			);
 		},
 	)
 	.group("/group/:groupId", (app) => {
-		return app.post(
+		return app.use(getAuthedUser).post(
 			"/members",
-			async ({ params: { groupId }, body: { members, type } }) => {
-				const group = await getGroup(groupId);
+			async ({ user, params: { groupId }, body: { members, type } }) => {
+				const group = client.conversations.getConversationById(groupId);
 				if (!groupId || !group) return "Invalid group id";
-				// - we only enable adding and removing members if a wallet is not already attached to the group
-				if (group.wallets.length)
-					return "Members on group chat with wallets are managed by who is a signer on each of the wallet";
+
+				// - ensure the requesting user is an existing group member
+				// TODO: should also ensure they have privileges to add members ?
+				if (
+					!group.members.some((member) =>
+						user.ethAccounts.some(
+							(account) => account.inboxId === member.inboxId,
+						),
+					)
+				)
+					return new Response(null, { status: 401 });
 
 				switch (type) {
 					case "add":
@@ -119,9 +126,10 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 				}
 			},
 			{
+				requiresAuthentication: true,
 				body: t.Object({
-					members: t.Array(AddressLiteral),
-					type: t.Union([t.Literal("add"), t.Literal("remove")]),
+					members: t.Array(WalletAddressLiteral),
+					type: t.Union([t.Literal("add")]),
 				}),
 			},
 		);
@@ -141,3 +149,5 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 // .listen(PORT, ({ hostname, port }) => {
 // 	console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
 // });
+
+setupListeners();

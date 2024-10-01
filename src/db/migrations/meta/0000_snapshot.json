@@ -1,79 +1,12 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "6b311824-03cc-418d-a8ce-9c933171d59a",
+  "id": "1729814b-54a9-4ac9-88b3-b0c8c5c3af7f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "group_members": {
-      "name": "group_members",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "group_id": {
-          "name": "group_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "group_members_address_group_id_unique": {
-          "name": "group_members_address_group_id_unique",
-          "columns": [
-            "address",
-            "group_id"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "group_members_group_id_groups_id_fk": {
-          "name": "group_members_group_id_groups_id_fk",
-          "tableFrom": "group_members",
-          "tableTo": "groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
     "group_wallets": {
       "name": "group_wallets",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "type": {
           "name": "type",
           "type": "text",
@@ -94,6 +27,36 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "factory": {
+          "name": "factory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "factory_data": {
+          "name": "factory_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
         }
       },
       "indexes": {},
@@ -112,7 +75,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "group_wallets_group_id_wallet_address_pk": {
+          "columns": [
+            "group_id",
+            "wallet_address"
+          ],
+          "name": "group_wallets_group_id_wallet_address_pk"
+        }
+      },
       "uniqueConstraints": {}
     },
     "groups": {
@@ -121,14 +92,202 @@
         "id": {
           "name": "id",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false,
+          "primaryKey": true,
+          "notNull": true,
           "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "inbox_ids": {
+      "name": "inbox_ids",
+      "columns": {
+        "inbox_id": {
+          "name": "inbox_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_xmtp_v3_enabled": {
+          "name": "is_xmtp_v3_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inbox_ids_inbox_id_address_pk": {
+          "columns": [
+            "address",
+            "inbox_id"
+          ],
+          "name": "inbox_ids_inbox_id_address_pk"
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "pending_members": {
+      "name": "pending_members",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "inbox_id": {
+          "name": "inbox_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pending_members_group_id_groups_id_fk": {
+          "name": "pending_members_group_id_groups_id_fk",
+          "tableFrom": "pending_members",
+          "tableTo": "groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "pending_members_group_id_inbox_id_pk": {
+          "columns": [
+            "group_id",
+            "inbox_id"
+          ],
+          "name": "pending_members_group_id_inbox_id_pk"
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "signers": {
+      "name": "signers",
+      "columns": {
+        "group_wallet_address": {
+          "name": "group_wallet_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "signers_group_wallet_address_group_wallets_wallet_address_fk": {
+          "name": "signers_group_wallet_address_group_wallets_wallet_address_fk",
+          "tableFrom": "signers",
+          "tableTo": "group_wallets",
+          "columnsFrom": [
+            "group_wallet_address"
+          ],
+          "columnsTo": [
+            "wallet_address"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "signers_address_inbox_ids_address_fk": {
+          "name": "signers_address_inbox_ids_address_fk",
+          "tableFrom": "signers",
+          "tableTo": "inbox_ids",
+          "columnsFrom": [
+            "address"
+          ],
+          "columnsTo": [
+            "address"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "signers_group_wallet_address_address_pk": {
+          "columns": [
+            "address",
+            "group_wallet_address"
+          ],
+          "name": "signers_group_wallet_address_address_pk"
+        }
+      },
       "uniqueConstraints": {}
     }
   },

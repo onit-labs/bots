@@ -1,9 +1,16 @@
 import * as fs from "node:fs";
-import { Client, type XmtpEnv } from "@xmtp/mls-client";
+import { Client, GroupUpdatedCodec, type XmtpEnv } from "@xmtp/mls-client";
 import { TextCodec } from "@xmtp/content-type-text";
 import { mnemonicToAccount } from "viem/accounts";
 import { createWalletClient, http, toBytes } from "viem";
 import { mainnet } from "viem/chains";
+import {
+	AttachmentCodec,
+	RemoteAttachmentCodec,
+} from "@xmtp/content-type-remote-attachment";
+import { ReplyCodec } from "@xmtp/content-type-reply";
+import { ReactionCodec } from "@xmtp/content-type-reaction";
+import { LinkGroupWalletContentTypeCodec } from "./content-types/link-wallet";
 
 const env = process.env.XMTP_ENV as XmtpEnv | undefined;
 const encryptionKey = process.env.ENCRYPTION_KEY as string | undefined;
@@ -24,7 +31,15 @@ if (!fs.existsSync(dbPath)) {
 export const client = await Client.create(account.address, {
 	env,
 	dbPath,
-	codecs: [new TextCodec()],
+	codecs: [
+		new TextCodec(),
+		new ReplyCodec(),
+		new ReactionCodec(),
+		new RemoteAttachmentCodec(),
+		new AttachmentCodec(),
+		new GroupUpdatedCodec(),
+		new LinkGroupWalletContentTypeCodec(),
+	],
 	encryptionKey: toBytes(encryptionKey).slice(0, 32),
 });
 

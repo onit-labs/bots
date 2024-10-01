@@ -1,12 +1,17 @@
-import { integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import {
+	integer,
+	primaryKey,
+	sqliteTable,
+	text,
+} from "drizzle-orm/sqlite-core";
 import {
 	relations,
+	sql,
 	type InferInsertModel,
 	type InferSelectModel,
 } from "drizzle-orm";
 import type { ChainShortName } from "../lib/eth/eip3770-shortnames";
-import type { Address } from "viem";
-import type { ValueOf } from "type-fest";
+import type { Address, Hex } from "viem";
 
 export type ChainAwareAddress =
 	| `${ChainShortName}:${Address}`
@@ -14,47 +19,69 @@ export type ChainAwareAddress =
 
 export type WalletAddress = Address | ChainAwareAddress;
 
-const idField = {
-	id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+const adminFields = {
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.default(sql`(unixepoch() * 1000)`)
+		.notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		.default(sql`(unixepoch() * 1000)`)
+		.notNull(),
 };
-
-const GroupMemberStatus = {
-	PENDING: "PENDING",
-	APPROVED: "APPROVED",
-	REJECTED: "REJECTED",
-} as const;
-
-const GroupMemberStatuses = [
-	"PENDING",
-	"APPROVED",
-	"REJECTED",
-] as const satisfies Array<ValueOf<typeof GroupMemberStatus>>;
 
 /**
  * - Tables
  */
 
 export const groups = sqliteTable("groups", {
-	id: text("id"),
+	id: text("id").primaryKey(),
 });
 
-export const groupWallets = sqliteTable("group_wallets", {
-	...idField,
-	type: text("type", { enum: ["safe", "party"] }).notNull(),
-	groupId: text("group_id").references(() => groups.id),
-	walletAddress: text("wallet_address").$type<WalletAddress>().notNull(),
-});
-
-export const groupMembers = sqliteTable(
-	"group_members",
+export const groupWallets = sqliteTable(
+	"group_wallets",
 	{
-		...idField,
+		type: text("type", { enum: ["safe", "party"] }).notNull(),
 		groupId: text("group_id").references(() => groups.id),
-		inboxId: text("inbox_id").notNull(),
-		status: text("status", { enum: GroupMemberStatuses }).notNull(),
+		walletAddress: text("wallet_address").$type<WalletAddress>().notNull(),
+		factory: text("factory").$type<WalletAddress>(),
+		factoryData: text("factory_data").$type<Hex>(),
+		createdAt: adminFields.createdAt,
+		updatedAt: adminFields.updatedAt,
 	},
 	(fields) => ({
-		uniqueMember: unique().on(fields.inboxId, fields.groupId),
+		primaryKey: primaryKey({ columns: [fields.groupId, fields.walletAddress] }),
+	}),
+);
+
+export const signers = sqliteTable(
+	"signers",
+	{
+		groupWalletAddress: text("group_wallet_address")
+			.references(() => groupWallets.walletAddress)
+			.notNull(),
+		address: text("address")
+			.references(() => inboxIds.address)
+			.$type<WalletAddress>()
+			.notNull(),
+		createdAt: adminFields.createdAt,
+	},
+	(fields) => ({
+		primaryKey: primaryKey({
+			columns: [fields.groupWalletAddress, fields.address],
+		}),
+	}),
+);
+
+export const pendingMembers = sqliteTable(
+	"pending_members",
+	{
+		createdAt: adminFields.createdAt,
+		updatedAt: adminFields.updatedAt,
+		groupId: text("group_id").references(() => groups.id),
+		inboxId: text("inbox_id").notNull(),
+		address: text("address").$type<WalletAddress>().notNull(),
+	},
+	(fields) => ({
+		primaryKey: primaryKey({ columns: [fields.groupId, fields.inboxId] }),
 	}),
 );
 
@@ -63,9 +90,14 @@ export const inboxIds = sqliteTable(
 	{
 		inboxId: text("inbox_id").notNull(),
 		address: text("address").$type<WalletAddress>().notNull(),
+		isXmtpV3Enabled: integer("is_xmtp_v3_enabled", {
+			mode: "boolean",
+		}).notNull(),
+		createdAt: adminFields.createdAt,
+		updatedAt: adminFields.updatedAt,
 	},
 	(fields) => ({
-		uniqueInbox: unique().on(fields.inboxId, fields.address),
+		primaryKey: primaryKey({ columns: [fields.inboxId, fields.address] }),
 	}),
 );
 
@@ -75,22 +107,13 @@ export const inboxIds = sqliteTable(
 
 export const groupsRelations = relations(groups, ({ many }) => ({
 	wallets: many(groupWallets),
-	members: many(groupMembers),
+	pendingMembers: many(pendingMembers),
 }));
 
-export const groupWalletsRelations = relations(groupWallets, ({ one }) => ({
-	group: one(groups, {
-		fields: [groupWallets.groupId],
-		references: [groups.id],
-	}),
-}));
-
-export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
-	group: one(groups, {
-		fields: [groupMembers.groupId],
-		references: [groups.id],
-	}),
-}));
+export const pendingMembersRelations = relations(
+	pendingMembers,
+	({ many }) => ({ inboxes: many(inboxIds) }),
+);
 
 /**
  * - Types
@@ -99,9 +122,8 @@ export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
 export type Group = InferSelectModel<typeof groups>;
 export type InsertGroup = InferInsertModel<typeof groups>;
 
-export type GroupMember = InferSelectModel<typeof groupMembers>;
-export type GroupMemberStatus = InferSelectModel<typeof groupMembers>["status"];
-export type InsertGroupMember = InferInsertModel<typeof groupMembers>;
+export type PendingMember = InferSelectModel<typeof pendingMembers>;
+export type InsertPendingMember = InferInsertModel<typeof pendingMembers>;
 
 export type GroupWallet = InferSelectModel<typeof groupWallets>;
 export type InsertGroupWallet = InferInsertModel<typeof groupWallets>;

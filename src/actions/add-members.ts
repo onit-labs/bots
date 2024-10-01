@@ -1,88 +1,77 @@
 import type { Address } from "viem";
-import { db } from "../db";
-import type { ChainAwareAddress } from "../db/schema";
-import * as schema from "../db/schema";
-import { client } from "../lib/xmtp/client";
-
-class MemberAddFailure extends Error {
-	constructor(
-		public address: Address,
-		public type: "existing" | "pending",
-	) {
-		super(`Failed to add member ${address} to group chat`);
-	}
-}
+import { db } from "@/db";
+import * as schema from "@/db/schema";
+import type { WalletAddress } from "@/db/schema";
+import { client } from "@/lib/xmtp/client";
+import { and, eq, inArray } from "drizzle-orm";
+import {
+	getInboxIdByAddress,
+	getDefaultInboxId,
+} from "@/utils/get-inbox-id-by-address";
 
 /**
  * Add members to a group chat
  * @param {string} groupId
- * @param {Address[]} members
- * @returns {Promise<{ pendingMembers: Address[]; members: Address[] }>}
+ * @param {Array<WalletAddress>} members
+ * @returns {Promise<void>}
  */
 export async function addMembers(
 	groupId: string,
-	members: Address[],
-): Promise<{ pendingMembers: Address[]; members: Address[] }> {
-	const approvedMembers: Address[] = [];
-	const pendingMembers: Address[] = [];
+	members: WalletAddress[],
+): Promise<void> {
+	const availableMembersInboxIds: string[] = [];
+	const pendingMembers: { inboxId: string; address: Address }[] = [];
+	const group = client.conversations.getConversationById(groupId);
+	if (!group) throw new Error("Group not found");
 
-	// - Try to add all the members to the group if this fails
-	// - then we will try to add each member individually to determine
-	// - which of the members failed to be added & add them to the pending members list
-	// ! we have to do this because atm there is no good way to check if the user is on the network &
-	// ! xmtp doesn't return a list of failed members on creation
+	const canMessageMembers = await client.canMessage(members);
+
+	const inboxesToStore: Array<schema.InsertInboxId> = [];
+	for await (const [address, canMessage] of Object.entries(canMessageMembers)) {
+		let inboxId = await getInboxIdByAddress(address);
+		const isXmtpV3Enabled = !!inboxId;
+		inboxId ||= getDefaultInboxId(address);
+
+		inboxesToStore.push({ inboxId, address, isXmtpV3Enabled });
+
+		if (canMessage && isXmtpV3Enabled) {
+			availableMembersInboxIds.push(inboxId);
+			continue;
+		}
+
+		pendingMembers.push({ address, inboxId });
+	}
+
 	try {
-		// tODO: there is an issue where XMTP will add members who aren't on the network
-		// TODO: see https://github.com/xmtp/libxmtp/issues/613
-		const conversation =
-			await client.conversations.getConversationById(groupId);
-		if (!conversation) throw new Error("Conversation not found");
-		const addedMembers = await conversation.addMembers(members);
-		approvedMembers.push(...members);
-		console.log(
-			`Created Group with id ${groupId} -> Added members ${members} -> full response ${JSON.stringify(
-				addedMembers,
-				null,
-				2,
-			)}`,
-		);
+		// - store all inboxes regardless of if they are available or not
+		await db
+			.insert(schema.inboxIds)
+			.values(inboxesToStore)
+			.onConflictDoNothing();
+
+		// - add the members that can be added
+		await group.addMembersByInboxId(availableMembersInboxIds);
+
+		// - if successful, remove pending members from database if they exist
+		await db
+			.delete(schema.pendingMembers)
+			.where(
+				and(
+					eq(schema.pendingMembers.groupId, groupId),
+					inArray(schema.pendingMembers.inboxId, availableMembersInboxIds),
+				),
+			);
 	} catch (e) {
 		console.error("Failed to add members to group chat", e);
 	}
 
-	// if (approvedMembers.length !== 0 || pendingMembers.length !== 0)
-	// 	await db
-	// 		.insert(schema.groupMembers)
-	// 		.values(
-	// 			[
-	// 			...approvedMembers.map((memberAddress) => ({
-	// 				status: "approved" as const,
-	// 				groupId,
-	// 				// TODO: once XMTP supports contract wallets update this
-	// 				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
-	// 			})),
-	// 			...pendingMembers.map((memberAddress) => ({
-	// 				status: "pending" as const,
-	// 				groupId,
-	// 				// TODO: once XMTP supports contract wallets update this
-	// 				chainAwareAddress: `eth:${memberAddress}` satisfies ChainAwareAddress,
-	// 			})),
-	// 		])
-	// 		.catch((e) => {
-	// 			console.error(
-	// 				"Failed to insert members into database",
-	// 				e,
-	// 				JSON.stringify(
-	// 					{
-	// 						members,
-	// 						pendingMembers,
-	// 						approvedMembers,
-	// 					},
-	// 					null,
-	// 					2,
-	// 				),
-	// 			);
-	// 		});
-
-	return { pendingMembers, members: approvedMembers };
+	if (pendingMembers.length !== 0) {
+		console.log("pendingMembers -> ", pendingMembers);
+		await db
+			.insert(schema.pendingMembers)
+			.values(pendingMembers.map((member) => ({ ...member, groupId })))
+			.catch((e) => {
+				console.error("Failed to add pending members to database", e);
+			});
+	}
 }

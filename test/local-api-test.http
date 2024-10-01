@@ -1,46 +1,29 @@
-POST http://localhost:8080/bot/create HTTP/1.1
-content-type: application/json
+@hostname = http://localhost
+@port = 8080
+@host = {{hostname}}:{{port}}
+@contentType = application/json
+@token = {{$processEnv TOKEN}}
 
-{
-  "groupAddress": "sep:0x76e009080E15DfbBF9a8424dB2D5b6772b6B5341"
-}
-
-###
-POST http://localhost:8080/bot/create HTTP/1.1
-content-type: application/json
-
-{
-  "groupType": "safe",
-  "groupAddress": "0x76e009080E15DfbBF9a8424dB2D5b6772b6B5341"
-}
+@testWalletAddress = 0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad
 
 ###
-POST http://localhost:8080/bot/create HTTP/1.1
-content-type: application/json
+GET {{host}}/wallet/{{testWalletAddress}} HTTP/1.1
 
-{
-  "members": ["0xDdD77754e23f2EA8bCd05D43C25084c6C81e82D8", "0xAF3fCab790DC38bCFcD6a19422c559d0aB57b29F"]
-}
 
 ###
-POST http://localhost:8080/bot/create HTTP/1.1
-content-type: application/json
-
-{
-  "members": ["0xDdD77754e23f2EA8bCd05D43C25084c6C81e82D8", "0xAF3fCab790DC38bCFcD6a19422c559d0aB57b29F", "0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad"]
-}
+GET {{host}}/group/ec3fe61731df69f89bdb973c2bbe3199 HTTP/1.1
 
 ###
-POST http://localhost:8080/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
-content-type: application/json
-
-{
-  "type": "remove",
-  "members": ["0xD452ba2fB26fB7b529178b3fa4B96b2719ca8D46"]
-}
+GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1 HTTP/1.1
 
 ###
-POST http://localhost:8080/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
+GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1/members HTTP/1.1
+
+###
+GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.1
+
+###
+POST {{host}}/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
 content-type: application/json
 
 {
@@ -49,38 +32,10 @@ content-type: application/json
 }
 
 ###
-GET http://localhost:8080/bot/sync-members HTTP/1.1
+GET {{host}}/bot/sync-members HTTP/1.1
 
 ###
-GET http://localhost:8080/bot/retry-pending-members HTTP/1.1
+GET {{host}}/bot/retry-pending-members HTTP/1.1
 
 ###
-GET http://localhost:8080/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1
-
-###
-GET http://localhost:8080/group/ec3fe61731df69f89bdb973c2bbe3199 HTTP/1.1
-
-###
-GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1 HTTP/1.1
-
-###
-GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/members HTTP/1.1
-
-
-###
-GET http://localhost:8080/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.1
-
-
-###
-GET http://localhost:8080/wallet/0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad HTTP/1.1
-
-###
-GET http://localhost:8080/group/ed4ac987e6556dc8802bb7d0fce39d1d/link-wallet/basesep:0xaC03aD602D6786e7E87566192b48e30666e327Ad HTTP/1.1
-
-###
-POST http://localhost:8080/group/ed4ac987e6556dc8802bb7d0fce39d1d/link-wallet/basesep:0xaC03aD602D6786e7E87566192b48e30666e327Ad HTTP/1.1
-Content-Type: application/json
-
-{
-  "signature": "0x123"
-}
+GET {{host}}/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1

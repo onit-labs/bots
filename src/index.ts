@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { getGroup } from "./actions/get-group";
 import { syncStoredMembersWithXmtp } from "./actions/sync-stored-members-with-xmtp";
-import { AddressLiteral } from "./lib/validators";
+import { AddressLiteral, WalletAddressLiteral } from "./lib/validators";
 import { getOwnersSafes } from "./actions/get-owners-safes";
 import { getGroupsByWalletAddresses } from "./actions/get-group-by-wallet-address";
 import { addMembers } from "./actions/add-members";
@@ -9,6 +9,12 @@ import { cron, Patterns } from "@elysiajs/cron";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { client } from "./lib/xmtp/client";
+import { authService } from "./services/auth";
+import { isChainAwareAddress } from "./utils/is-chain-aware-address";
+
+if (!process.env.JWT_SECRET) {
+	throw new Error("JWT_SECRET is not set");
+}
 
 /**
  * This service is responsible for keeping xmtp group chat members in sync with the members of a safe.
@@ -64,18 +70,35 @@ export default new Elysia()
 	})
 	.group(
 		"/wallet/:address",
-		{ params: t.Object({ address: AddressLiteral }) },
+		{
+			params: t.Object({ address: WalletAddressLiteral }),
+		},
 		(app) => {
-			return app.get("/", async ({ params: { address } }) => {
-				console.log("getting groups by address", address);
-				// - get the addresses safes
-				const safes = await getOwnersSafes(address);
+			return (
+				app
+					// .use(authService)
+					.get(
+						"/",
+						async ({ params: { address } }) => {
+							console.log("getting groups by address", address);
 
-				console.log("safes ->", safes);
+							// TODO: handle chain aware addresses
+							if (isChainAwareAddress(address)) {
+								throw new Error("Chain aware addresses are not supported yet");
+							}
 
-				// - check for groups with the safe address
-				return (await getGroupsByWalletAddresses(safes)) || [];
-			});
+							const safes = await getOwnersSafes(address);
+
+							console.log("safes ->", safes);
+
+							// - check for groups with the safe address
+							return (await getGroupsByWalletAddresses(safes)) || [];
+						},
+						// {
+						// 	requiresAuthentication: true,
+						// },
+					)
+			);
 		},
 	)
 	.group("/group/:groupId", (app) => {
@@ -115,6 +138,6 @@ export default new Elysia()
 			},
 		);
 	})
-	.listen(8080, ({ hostname, port }) => {
+	.listen(process.env.PORT ?? 8080, ({ hostname, port }) => {
 		console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
 	});

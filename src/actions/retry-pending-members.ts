@@ -1,57 +1,57 @@
-import * as R from "remeda";
-import { and, eq } from "drizzle-orm";
-import * as schema from "../db/schema";
-import { db } from "../db";
-import { client } from "../lib/xmtp/client";
-import type { GroupMember, GroupMemberStatus } from "../db/schema";
+import * as R from "remeda"
+import { and, eq } from "drizzle-orm"
+import * as schema from "../db/schema"
+import { db } from "../db"
+import { client } from "../lib/xmtp/client"
+import { parseWalletAddress } from "@/lib/chain"
+import { getInboxIdByAddress } from "@/lib/get-inbox-id-by-address"
 
 export async function retryPendingMembers(groupId?: string) {
 	// - get the pending members
-	const pendingMembers = await db.query.groupMembers.findMany({
-		where: (fields, { eq }) =>
-			groupId
-				? and(eq(fields.groupId, groupId), eq(fields.status, "PENDING"))
-				: eq(fields.status, "PENDING"),
-	});
+	const pendingMembers = await db.query.pendingMembers.findMany({
+		...(groupId && {
+			where: (fields, { eq }) => and(eq(fields.groupId, groupId)),
+		}),
+	})
 
-	const batchedPromises = R.chunk(pendingMembers.map(retryAddMember), 10);
+	const batchedPromises = R.chunk(pendingMembers.map(retryAddMember), 10)
 
 	for (const batch of batchedPromises) {
 		// TODO: maybe we should also have a delay?
-		await Promise.allSettled(batch);
+		await Promise.allSettled(batch)
 	}
 }
 
 /**
  * Retry adding a status `pending` member to the group & update the status if successful
  * */
-async function retryAddMember({
-	id,
+export async function retryAddMember({
 	groupId,
-	chainAwareAddress,
-}: GroupMember): Promise<GroupMemberStatus | undefined> {
-	const address = chainAwareAddress.split(":").at(-1);
-	if (!id || !groupId || !address) return undefined;
+	address: walletAddress,
+}: Pick<schema.PendingMember, "groupId" | "address">): Promise<void> {
+	if (!groupId) return
+	const conversation = client.conversations.getConversationById(groupId)
+	if (!conversation) throw new Error("Conversation not found")
+	const { address } = parseWalletAddress(walletAddress)
+	if (!address) return
+
+	const inboxId = await getInboxIdByAddress(address, true)
+
+	if (!inboxId) return
 
 	try {
-		console.log(`adding ${address} to group ${groupId}`);
-		const conversation =
-			await client.conversations.getConversationById(groupId);
-		if (!conversation) throw new Error("Conversation not found");
-		await conversation.addMembers([address]);
+		console.log(`adding ${address} to group ${groupId}`)
+		await conversation.addMembers([address])
 		await db
-			.update(schema.groupMembers)
-			.set({ status: "APPROVED" as const })
+			.delete(schema.pendingMembers)
 			.where(
 				and(
-					eq(schema.groupMembers.id, id),
-					eq(schema.groupMembers.chainAwareAddress, chainAwareAddress),
+					eq(schema.pendingMembers.groupId, groupId),
+					eq(schema.pendingMembers.address, address),
 				),
-			);
-		return "APPROVED";
+			)
 	} catch (e) {
-		console.error(`failed to add ${address} to group ${groupId}`);
+		console.error(`failed to add ${address} to group ${groupId}`)
 		// - no need to update the status as we will retry this on the next run
-		return "pending";
 	}
 }

@@ -1,7 +1,7 @@
-import type { Address } from "@/db/schema";
-import { db } from "../db";
-import type { ChainAwareAddress } from "../db/schema";
-import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
+import type { Address, ChainAwareAddress, WalletAddress } from "@/db/schema"
+import { db } from "@/db"
+import { sqliteAddressFromChainAwareAddress } from "@/lib/sqlite-address-from-chain-aware-address"
+import { parseWalletAddress } from "@/lib/chain"
 
 const groupWalletColumns = {
 	columns: {
@@ -9,40 +9,20 @@ const groupWalletColumns = {
 		walletAddress: true,
 	},
 	with: {
+		signers: { columns: { address: true } },
 		group: {
 			columns: { id: true },
-			with: {
-				members: {
-					columns: { status: true },
-					extras: (fields) => ({
-						address: sqliteAddressFromChainAwareAddress(
-							fields.chainAwareAddress,
-						).as("address"),
-					}),
-				},
-			},
+			with: { pendingMembers: true },
 		},
 	},
-} as const satisfies Parameters<typeof db.query.groupWallets.findFirst>[0];
+} as const satisfies Parameters<typeof db.query.groupWallets.findFirst>[0]
 
 /**
  * Get a group by the wallet address
- * @param {Address | ChainAwareAddress} walletAddress
- * @returns {Promise<{
- *   id: string;
- *   wallet: {
- *     type: string;
- *     walletAddress: string;
- *   };
- *   pendingMembers: Address[];
- * } | null>}
  */
-export async function getGroupByWalletAddress(
-	walletAddress: Address | ChainAwareAddress,
-) {
+export async function getGroupByWalletAddress(walletAddress: WalletAddress) {
 	// - extract the chain prefix from the wallet address
-	const groupAddressWithoutPrefix =
-		walletAddress.split(":")[1] || walletAddress;
+	const { address: groupAddress } = parseWalletAddress(walletAddress)
 
 	// - query the database for a group wallet with the same address
 	const groupWallet = await db.query.groupWallets.findFirst({
@@ -51,33 +31,29 @@ export async function getGroupByWalletAddress(
 		where: (fields, { sql }) =>
 			sql`${sqliteAddressFromChainAwareAddress(
 				fields.walletAddress,
-			)} = ${groupAddressWithoutPrefix}`,
-	});
+			)} = ${groupAddress}`,
+	})
 
-	if (!groupWallet || !groupWallet?.group?.id) return null;
+	if (!groupWallet || !groupWallet?.group?.id) return null
 
 	return {
 		...groupWallet.group,
 		wallet: {
-			type: groupWallet.type,
-			walletAddress: groupWallet.walletAddress,
+			...groupWallet,
+			signers: groupWallet.signers.map((signer) => signer.address),
 		},
-	};
+	}
 }
 
 export async function getGroupsByWalletAddresses(
 	walletAddresses: (Address | ChainAwareAddress)[],
 ) {
-	console.log("getting groups by addresses", walletAddresses);
-
 	// - extract the chain prefix from the wallet address
-	const groupAddressesWithoutPrefix = walletAddresses.map(
-		(walletAddress) =>
-			(walletAddress.split(":")[1] || walletAddress) as Address,
-	);
+	const groupAddresses = walletAddresses.map(
+		(walletAddress) => parseWalletAddress(walletAddress).address,
+	)
 
-	if (!groupAddressesWithoutPrefix || groupAddressesWithoutPrefix.length === 0)
-		return null;
+	if (!groupAddresses || groupAddresses.length === 0) return null
 
 	// - query the database for a group wallet with the same address
 	const groupWallets = await db.query.groupWallets.findMany({
@@ -86,17 +62,17 @@ export async function getGroupsByWalletAddresses(
 		where: (fields, { inArray }) =>
 			inArray(
 				sqliteAddressFromChainAwareAddress(fields.walletAddress),
-				groupAddressesWithoutPrefix,
+				groupAddresses,
 			),
-	});
+	})
 
-	if (!groupWallets || groupWallets.length === 0) return null;
+	if (!groupWallets || groupWallets.length === 0) return null
 
 	return groupWallets.map((groupWallet) => ({
 		...groupWallet.group,
 		wallet: {
-			type: groupWallet.type,
-			walletAddress: groupWallet.walletAddress,
+			...groupWallet,
+			signers: groupWallet.signers.map((signer) => signer.address),
 		},
-	}));
+	}))
 }

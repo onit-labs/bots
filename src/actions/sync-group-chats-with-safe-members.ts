@@ -1,47 +1,47 @@
-import * as R from "remeda";
-import { db } from "../db";
-import { inArray, sql } from "drizzle-orm";
-import { client } from "../lib/xmtp/client";
-import { getDeployments } from "./get-deployments";
-import * as schema from "../db/schema";
-import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address";
-import type { Address } from "@/db/schema";
-import { addMembers } from "./add-members";
+import * as R from "remeda"
+import { db } from "../db"
+import { inArray, sql } from "drizzle-orm"
+import { client } from "../lib/xmtp/client"
+import { getDeployments } from "./get-deployments"
+import * as schema from "../db/schema"
+import { sqliteAddressFromChainAwareAddress } from "../lib/sqlite-address-from-chain-aware-address"
+import type { Address } from "@/db/schema"
+import { addMembers } from "./add-members"
 
 export default async function syncGroupChatsWithSafeMembers() {
-	console.log("syncing group chats with safe members");
+	console.log("syncing group chats with safe members")
 	// - get the current group chats from XMTP
-	const groupChats = await client.conversations.list();
+	const groupChats = await client.conversations.list()
 
-	console.log("groupChats", groupChats);
+	console.log("groupChats", groupChats)
 
-	if (!groupChats || groupChats.length === 0) return;
+	if (!groupChats || groupChats.length === 0) return
 
 	// - get all group wallets & the stored members of those groups from the database
 	const groupWallets = await db.query.groupWallets.findMany({
-		with: { group: { with: { members: true } } },
+		with: { group: { with: { pendingMembers: true } } },
 		where(fields, { inArray }) {
 			return inArray(
 				fields.groupId,
 				groupChats.map((group) => group.id),
-			);
+			)
 		},
-	});
+	})
 
-	console.log("groupWallets", groupWallets);
+	console.log("groupWallets", groupWallets)
 
 	// - iterate over each groups wallet deployments & ensure the members in the chat are the union of the wallet owners
 	for (const groupWallet of groupWallets) {
 		const groupChat = groupChats.find(
 			(group) => group.id === groupWallet.groupId,
-		);
+		)
 
-		if (!groupChat) continue;
+		if (!groupChat) continue
 
 		const deployments = await getDeployments({
 			type: "safe",
 			address: groupWallet.walletAddress,
-		});
+		})
 
 		// TODO: if we find a deployment that is not linked to a group wallet, we should link it
 
@@ -49,7 +49,7 @@ export default async function syncGroupChatsWithSafeMembers() {
 			deployments,
 			R.flatMap((deployment) => deployment.members),
 			R.unique(),
-		);
+		)
 
 		/**
 		 * This is a list of owners (wallet signers) with their `status` in the group chat attached.
@@ -70,9 +70,9 @@ export default async function syncGroupChatsWithSafeMembers() {
 							member.chainAwareAddress
 								.toLowerCase()
 								.endsWith(owner.toLowerCase()),
-						) ?? {};
+						) ?? {}
 
-					return { address: owner, status };
+					return { address: owner, status }
 				}),
 				R.partition(
 					(owner) =>
@@ -80,7 +80,7 @@ export default async function syncGroupChatsWithSafeMembers() {
 							(member) => member.toLowerCase() === owner.address.toLowerCase(),
 						) ?? false,
 				),
-			);
+			)
 
 		/**
 		 * There are several situations that we need to handle explicitly here:
@@ -96,7 +96,7 @@ export default async function syncGroupChatsWithSafeMembers() {
 		const unapprovedOwners = ownersThatAreMembersOfTheChat.filter(
 			({ status }) => !!status && status !== "APPROVED",
 			// ! filter types suck here
-		) as Array<{ status: "PENDING" | "REJECTED"; address: Address }>;
+		) as Array<{ status: "PENDING" | "REJECTED"; address: Address }>
 
 		if (unapprovedOwners.length > 0)
 			await db
@@ -112,20 +112,20 @@ export default async function syncGroupChatsWithSafeMembers() {
 						),
 						sql` collate nocase`,
 					]),
-				);
+				)
 
-		console.log("approved missing owners -> ", unapprovedOwners);
+		console.log("approved missing owners -> ", unapprovedOwners)
 
 		// 2. add missing owners to the database as approved & to the XMTP group chat
 		const membersToAdd = ownersThatAreNotMembersOfTheChat
 			.filter(({ status }) => status === undefined)
-			.map(({ address }) => address);
+			.map(({ address }) => address)
 
 		console.log(
 			"adding missing owners to the database and XMTP group chat",
 			membersToAdd,
-		);
+		)
 
-		if (membersToAdd.length > 0) await addMembers(groupChat.id, membersToAdd);
+		if (membersToAdd.length > 0) await addMembers(groupChat.id, membersToAdd)
 	}
 }

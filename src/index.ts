@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia"
-import { syncStoredMembersWithXmtp } from "@/actions/sync-stored-members-with-xmtp"
 import { WalletAddressLiteral } from "@/lib/validators"
 import { getOwnersSafes } from "@/actions/get-owners-safes"
 import { getGroupsByWalletAddresses } from "@/actions/get-group-by-wallet-address"
@@ -173,18 +172,6 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 							}),
 						},
 					)
-			})
-			.group("/bot", (app) => {
-				return app.get(
-					"/sync-members",
-					async ({ query: { groupId } }) => {
-						const members = await syncStoredMembersWithXmtp(groupId)
-						return JSON.stringify(members, null, 4)
-					},
-					{
-						query: t.Object({ groupId: t.Optional(t.String()) }),
-					},
-				)
 			})
 	})
 // .listen(PORT, ({ hostname, port }) => {

@@ -1,19 +1,21 @@
-import { Elysia, t } from "elysia";
-import { syncStoredMembersWithXmtp } from "@/actions/sync-stored-members-with-xmtp";
-import { WalletAddressLiteral } from "@/lib/validators";
-import { getOwnersSafes } from "@/actions/get-owners-safes";
-import { getGroupsByWalletAddresses } from "@/actions/get-group-by-wallet-address";
-import { addMembers } from "@/actions/add-members";
-import { cron, Patterns } from "@elysiajs/cron";
-import { db } from "@/db";
-import { sql } from "drizzle-orm";
-import { client } from "@/lib/xmtp/client";
-import { getAuthedUser } from "@/services/auth";
-import { isChainAwareAddress } from "@/lib/chain";
-import { setupListeners } from "./lib/xmtp/setup-listeners";
+import { Elysia, t } from "elysia"
+import { syncStoredMembersWithXmtp } from "@/actions/sync-stored-members-with-xmtp"
+import { WalletAddressLiteral } from "@/lib/validators"
+import { getOwnersSafes } from "@/actions/get-owners-safes"
+import { getGroupsByWalletAddresses } from "@/actions/get-group-by-wallet-address"
+import { addMembers } from "@/actions/add-members"
+import { cron, Patterns } from "@elysiajs/cron"
+import { db } from "@/db"
+import { sql } from "drizzle-orm"
+import { client } from "@/lib/xmtp/client"
+import { getAuthedUser } from "@/services/auth"
+import { isChainAwareAddress, parseWalletAddress } from "@/lib/chain"
+import { setupListeners } from "./lib/xmtp/setup-listeners"
+import type { Address } from "./db/schema"
+import { retryAddMember } from "./actions/retry-pending-members"
 
 if (!process.env.JWT_SECRET) {
-	throw new Error("JWT_SECRET is not set");
+	throw new Error("JWT_SECRET is not set")
 }
 
 /**
@@ -50,104 +52,143 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 			name: "heartbeat",
 			pattern: Patterns.EVERY_10_SECONDS,
 			run() {
-				db.query.groups
-					.findMany()
-					.then((groups) => console.log("groups -> ", groups));
-				db.query.groupWallets
-					.findMany()
-					.then((wallets) => console.log("group wallets -> ", wallets));
 				console.log(
 					`app.db size -> ${
 						db.get<[number]>(
 							sql`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();`,
 						)[0] / 1024
 					} KB`,
-				);
+				)
 			},
 		}),
 	)
 	.get("/", async () => "Onit XMTP bot 🤖")
-	.group(
-		"/wallet/:address",
-		{ params: t.Object({ address: WalletAddressLiteral }) },
-		(app) => {
-			return app.use(getAuthedUser).get(
-				"/",
-				async ({ params: { address }, user }) => {
-					console.log("user ->", user);
+	.group("/v2", (app) => {
+		return app
+			.group(
+				"/wallets/:address",
+				{ params: t.Object({ address: WalletAddressLiteral }) },
+				(app) =>
+					app
+						.use(getAuthedUser)
+						.onBeforeHandle(({ error, params: { address }, user }) => {
+							// ! ensure the user has authority over the account they are requesting
+							if (
+								!user.ethAccounts.some(
+									(account) =>
+										account.address.toLowerCase() === address.toLowerCase(),
+								)
+							)
+								return error(401)
 
-					if (
-						!user.ethAccounts.some(
-							(account) =>
-								account.address.toLowerCase() === address.toLowerCase(),
-						)
-					)
-						return new Response(null, { status: 401 });
+							// TODO: handle chain aware addresses
+							if (isChainAwareAddress(address))
+								return error(400, "Chain aware addresses are not supported yet")
+						})
+						.get(
+							"/",
+							async ({ params: { address } }) => {
+								const safes = await getOwnersSafes(address as Address)
 
-					// TODO: handle chain aware addresses
-					if (isChainAwareAddress(address)) {
-						throw new Error("Chain aware addresses are not supported yet");
-					}
+								console.log("safes ->", safes)
 
-					const safes = await getOwnersSafes(address);
-
-					console.log("safes ->", safes);
-
-					// - check for groups with the safe address
-					return (await getGroupsByWalletAddresses(safes)) || [];
-				},
-				{ requiresAuthentication: true },
-			);
-		},
-	)
-	.group("/group/:groupId", (app) => {
-		return app.use(getAuthedUser).post(
-			"/members",
-			async ({ user, params: { groupId }, body: { members, type } }) => {
-				const group = client.conversations.getConversationById(groupId);
-				if (!groupId || !group) return "Invalid group id";
-
-				// - ensure the requesting user is an existing group member
-				// TODO: should also ensure they have privileges to add members ?
-				if (
-					!group.members.some((member) =>
-						user.ethAccounts.some(
-							(account) => account.inboxId === member.inboxId,
+								// - check for groups with the safe address
+								return (await getGroupsByWalletAddresses(safes)) || []
+							},
+							{ requiresAuthentication: true },
 						),
-					)
-				)
-					return new Response(null, { status: 401 });
+				// .post("/", async ({ params: { address }, user, body }) => {}),
+			)
+			.group("/groups/:groupId", (app) => {
+				return app
+					.use(getAuthedUser)
+					.patch(
+						"/members",
+						/**
+						 * This route is used to add new members to a group chat. The caller must be an existing group member.
+						 */
+						async ({ params: { groupId }, body: { members } }) => {
+							const group = client.conversations.getConversationById(groupId)
+							if (!groupId || !group) return "Invalid group id"
 
-				switch (type) {
-					case "add":
-						return addMembers(groupId, members);
-					default:
-						return "Invalid type";
-				}
-			},
-			{
-				requiresAuthentication: true,
-				body: t.Object({
-					members: t.Array(WalletAddressLiteral),
-					type: t.Union([t.Literal("add")]),
-				}),
-			},
-		);
+							await addMembers(groupId, members)
+						},
+						{ body: t.Object({ members: t.Array(WalletAddressLiteral) }) },
+					)
+					.post(
+						"/members",
+						async ({ user, params: { groupId }, body: { members, type } }) => {
+							const group = client.conversations.getConversationById(groupId)
+							if (!groupId || !group) return "Invalid group id"
+
+							// - ensure the requesting user is an existing group member
+							// TODO: should also ensure they have privileges to add members ?
+							if (
+								!group.members.some((member) =>
+									user.ethAccounts.some(
+										(account) => account.inboxId === member.inboxId,
+									),
+								)
+							)
+								return new Response(null, { status: 401 })
+
+							switch (type) {
+								case "add":
+									return addMembers(groupId, members)
+								default:
+									return "Invalid type"
+							}
+						},
+						{
+							requiresAuthentication: true,
+							body: t.Object({
+								members: t.Array(WalletAddressLiteral),
+								type: t.Union([t.Literal("add")]),
+							}),
+						},
+					)
+					.post(
+						"/members/:walletAddress",
+						async ({ params: { groupId, walletAddress } }) => {
+							const group = client.conversations.getConversationById(groupId)
+							if (!groupId || !group) return "Invalid group id"
+							const { address } = parseWalletAddress(walletAddress)
+							// - do nothing if the user is already on the group
+							if (
+								group.members.some((member) =>
+									member.accountAddresses.some(
+										(addy) => addy.toLowerCase() === address.toLowerCase(),
+									),
+								)
+							)
+								return new Response(null, { status: 200 })
+
+							// - if the user is a pending member of the group then we try to add them again
+							await retryAddMember({ groupId, address })
+						},
+						{
+							params: t.Object({
+								groupId: t.String(),
+								walletAddress: WalletAddressLiteral,
+							}),
+						},
+					)
+			})
+			.group("/bot", (app) => {
+				return app.get(
+					"/sync-members",
+					async ({ query: { groupId } }) => {
+						const members = await syncStoredMembersWithXmtp(groupId)
+						return JSON.stringify(members, null, 4)
+					},
+					{
+						query: t.Object({ groupId: t.Optional(t.String()) }),
+					},
+				)
+			})
 	})
-	.group("/bot", (app) => {
-		return app.get(
-			"/sync-members",
-			async ({ query: { groupId } }) => {
-				const members = await syncStoredMembersWithXmtp(groupId);
-				return JSON.stringify(members, null, 4);
-			},
-			{
-				query: t.Object({ groupId: t.Optional(t.String()) }),
-			},
-		);
-	});
 // .listen(PORT, ({ hostname, port }) => {
 // 	console.log(`🦊 Elysia is running at http://${hostname}:${port}`);
 // });
 
-setupListeners();
+setupListeners()

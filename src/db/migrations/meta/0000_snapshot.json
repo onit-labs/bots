@@ -182,13 +182,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "inbox_id": {
-          "name": "inbox_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "address": {
           "name": "address",
           "type": "text",
@@ -214,12 +207,12 @@
         }
       },
       "compositePrimaryKeys": {
-        "pending_members_group_id_inbox_id_pk": {
+        "pending_members_group_id_address_pk": {
           "columns": [
             "group_id",
-            "inbox_id"
+            "address"
           ],
-          "name": "pending_members_group_id_inbox_id_pk"
+          "name": "pending_members_group_id_address_pk"
         }
       },
       "uniqueConstraints": {}

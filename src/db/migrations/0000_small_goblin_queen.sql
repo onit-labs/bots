@@ -27,9 +27,8 @@ CREATE TABLE `pending_members` (
 	`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,
 	`group_id` text,
-	`inbox_id` text NOT NULL,
 	`address` text COLLATE NOCASE NOT NULL,
-	PRIMARY KEY(`group_id`, `inbox_id`),
+	PRIMARY KEY(`group_id`, `address`),
 	FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint

@@ -1,3 +1,4 @@
+import * as R from "remeda"
 import { Elysia, t } from "elysia"
 import { WalletAddressLiteral } from "@/lib/validators"
 import { getOwnersSafes } from "@/actions/get-owners-safes"
@@ -11,7 +12,11 @@ import { getAuthedUser } from "@/services/auth"
 import { isChainAwareAddress, parseWalletAddress } from "@/lib/chain"
 import { setupListeners } from "./lib/xmtp/setup-listeners"
 import type { Address } from "./db/schema"
-import { retryAddMember } from "./actions/retry-pending-members"
+import {
+	retryAddMember,
+	retryPendingMembers,
+} from "./actions/retry-pending-members"
+import { sqliteAddressFromChainAwareAddress } from "./lib/sqlite-address-from-chain-aware-address"
 
 if (!process.env.JWT_SECRET) {
 	throw new Error("JWT_SECRET is not set")
@@ -61,6 +66,16 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 			},
 		}),
 	)
+	.use(
+		cron({
+			name: "retry all pending members",
+			pattern: Patterns.EVERY_10_MINUTES,
+			async run() {
+				console.log("retrying all pending members")
+				await retryPendingMembers()
+			},
+		}),
+	)
 	.get("/", async () => "Onit XMTP bot 🤖")
 	.group("/v2", (app) => {
 		return app
@@ -69,6 +84,36 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 				{ params: t.Object({ address: WalletAddressLiteral }) },
 				(app) =>
 					app
+						.get("/sync", async ({ params: { address } }) => {
+							const pendingGroups = await db.query.pendingMembers.findMany({
+								columns: { groupId: true },
+								where: (fields, { eq, or }) =>
+									or(
+										eq(fields.address, address),
+										eq(
+											sqliteAddressFromChainAwareAddress(fields.address),
+											address,
+										),
+									),
+							})
+
+							console.log(
+								`syncing all pending groups for the wallet ${address}`,
+							)
+							console.log("pending groups ->", pendingGroups)
+
+							const batchedPromises = R.chunk(
+								pendingGroups
+									.filter(({ groupId }) => !!groupId)
+									// biome-ignore lint/style/noNonNullAssertion: filtered
+									.map(({ groupId }) => retryPendingMembers(groupId!).catch()),
+								10,
+							)
+
+							for (const batch of batchedPromises) {
+								await Promise.all(batch)
+							}
+						})
 						.use(getAuthedUser)
 						.onBeforeHandle(({ error, params: { address }, user }) => {
 							// ! ensure the user has authority over the account they are requesting

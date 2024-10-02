@@ -51,7 +51,9 @@ export async function retryAddMember({
 				),
 			)
 	} catch (e) {
-		console.error(`failed to add ${address} to group ${groupId}`)
+		console.error(
+			`failed to add ${address} to group ${groupId} -> ${(e as Error).message}`,
+		)
 		// - no need to update the status as we will retry this on the next run
 	}
 }

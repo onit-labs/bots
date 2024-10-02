@@ -1,29 +1,33 @@
 @hostname = http://localhost
 @port = 8080
 @host = {{hostname}}:{{port}}
+@version= v2
 @contentType = application/json
 @token = {{$dotenv TOKEN}}
 
 @testWalletAddress = 0x524bF2086D4b5BBdA06f4c16Ec36f06AAd4E1Cad
+@testWalletAddress2 = 0xD7029BDEa1c17493893AAfE29AAD69EF892B8ff2
+@testGroupId = 5851f119fc7c2fd151c1e174f221fb4d
 
 ###
-GET {{host}}/wallet/{{testWalletAddress}} HTTP/1.1
+GET {{host}}/{{version}}/wallets/{{testWalletAddress}} HTTP/1.1
 Authorization: Bearer {{token}}
 
-###
-GET {{host}}/group/ec3fe61731df69f89bdb973c2bbe3199 HTTP/1.1
+### 
+# adds a group member
+PATCH {{host}}/{{version}}/groups/{{testGroupId}}/members HTTP/1.1
+Authorization: Bearer {{token}}
+content-type: application/json
+
+{
+  "members": ["{{testWalletAddress2}}"]
+}
 
 ###
-GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1 HTTP/1.1
+GET {{host}}/{{version}}/wallets/{{testWalletAddress2}}/sync HTTP/1.1
 
 ###
-GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1/members HTTP/1.1
-
-###
-GET {{host}}/group/4cf971dcb124e9e57fad653cdc6242f1/wallets HTTP/1.1
-
-###
-POST {{host}}/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
+POST {{host}}/{{version}}/group/c68c8e59018b46484f0b365f1e48056a/members HTTP/1.1
 content-type: application/json
 
 {
@@ -32,10 +36,10 @@ content-type: application/json
 }
 
 ###
-GET {{host}}/bot/sync-members HTTP/1.1
+GET {{host}}/{{version}}/bot/sync-members HTTP/1.1
 
 ###
-GET {{host}}/bot/retry-pending-members HTTP/1.1
+GET {{host}}/{{version}}/bot/retry-pending-members HTTP/1.1
 
 ###
-GET {{host}}/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1
+GET {{host}}/{{version}}/bot/sync-pending-members?groupId=c6894e8dae94456ef19fb2fcf1bbbdec HTTP/1.1

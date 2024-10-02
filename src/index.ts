@@ -80,7 +80,7 @@ const app = new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 				{ params: t.Object({ address: WalletAddressLiteral }) },
 				(app) =>
 					app
-						.get("/sync", async ({ params: { address } }) => {
+						.post("/sync", async ({ params: { address } }) => {
 							const pendingGroups = await db.query.pendingMembers.findMany({
 								columns: { groupId: true },
 								where: (fields, { eq, or }) =>

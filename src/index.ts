@@ -35,10 +35,6 @@ if (!process.env.JWT_SECRET) {
  */
 
 /**
- * - TODO
- * - add a method to link a deployed counterfactual account to the group chat
- * - add the ability for a member to remove themselves from a group chat
- *
  * For the V2 version we need the bot to:
  * - keep track of the groups it is in
  * - keep track of the members of each group
@@ -50,7 +46,7 @@ if (!process.env.JWT_SECRET) {
  * - track the messages in the group chat that are 'system' messages, i.e. attachWallet, addMember, removeMember, etc
  */
 
-export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
+const app = new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 	.use(
 		cron({
 			name: "heartbeat",
@@ -224,3 +220,6 @@ export default new Elysia({ serve: { port: process.env.PORT ?? 8080 } })
 // });
 
 setupListeners()
+
+export type App = typeof app
+export default app
